@@ -1,0 +1,36 @@
+## Interface: 110105
+## Title: Cooldown Manager
+## Notes: Enhance and customize the Blizzard Cooldown Manager with advanced features, visual customization, and complete control over cooldown tracking.
+## Author: Nephuhlim. Co0pDawg
+## Version: 1.1.0
+## SavedVariables: CooldownManagerDB
+## OptionalDeps: Ace3, LibSharedMedia-3.0
+## X-Category: Combat
+## X-License: All Rights Reserved
+## X-Website: https://github.com/yourusername/CooldownManager
+## X-Curse-Project-ID: 
+## X-WoWI-ID: 
+
+# Core Libraries
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+
+# Ace3 Framework
+Libs\AceAddon-3.0\AceAddon-3.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
+Libs\AceEvent-3.0\AceEvent-3.0.xml
+Libs\AceConsole-3.0\AceConsole-3.0.xml
+Libs\AceHook-3.0\AceHook-3.0.xml
+Libs\AceLocale-3.0\AceLocale-3.0.xml
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
+
+# Additional Libraries
+Libs\LibDataBroker-1.1.lua
+Libs\LibSharedMedia-3.0\lib.xml
+Libs\TaintLess\TaintLess.xml
+
+# Core Files
+main.lua
+config.lua
