@@ -20,6 +20,9 @@ viewerTabs = nil
 
 
 local function GetViewerSetting(viewer, key, default)
+    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+        return default
+    end
     CooldownManagerDBHandler.profile.viewers = CooldownManagerDBHandler.profile.viewers or {}
     CooldownManagerDBHandler.profile.viewers[viewer] = CooldownManagerDBHandler.profile.viewers[viewer] or {}
     local value = CooldownManagerDBHandler.profile.viewers[viewer][key]
@@ -31,6 +34,9 @@ local function GetViewerSetting(viewer, key, default)
 end
 
 function SetViewerSetting(viewer, key, value)
+    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+        return
+    end
     CooldownManagerDBHandler.profile.viewers = CooldownManagerDBHandler.profile.viewers or {}
     CooldownManagerDBHandler.profile.viewers[viewer] = CooldownManagerDBHandler.profile.viewers[viewer] or {}
     CooldownManagerDBHandler.profile.viewers[viewer][key] = value
@@ -42,6 +48,9 @@ local viewerTabs
 
 local function generateHiddenSpellArgs(viewerName)
     local args = {}
+    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+        return args
+    end
     local db = CooldownManagerDBHandler.profile.viewers[viewerName]
     if not db or not db.hiddenCooldowns or not db.hiddenCooldowns[viewerName] then return args end
 
@@ -93,6 +102,9 @@ end
 
 local function generateCustomSpellArgs(viewerName)
     local args = {}
+    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+        return args
+    end
     local db = CooldownManagerDBHandler.profile.viewers[viewerName]
     if not db or not db.customSpells then return args end
 
@@ -176,6 +188,10 @@ end
 
 --Main GUI
 function SetupOptions()
+    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+        return
+    end
+    
     viewerTabs = {
         type = "group",
         name = "Cooldown Manager",
@@ -185,8 +201,12 @@ function SetupOptions()
                 name = "Border Size",
                 desc = "Adjust thickness of the icon border",
                 min = 0, max = 5, step = 1,
-                get = function() return CooldownManagerDBHandler.profile.borderSize end,
+                get = function() 
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return 1 end
+                    return CooldownManagerDBHandler.profile.borderSize 
+                end,
                 set = function(_, val)
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
                     CooldownManagerDBHandler.profile.borderSize = val
                     TrySkin()
                 end,
@@ -197,8 +217,12 @@ function SetupOptions()
                 name = "Icon Zoom",
                 desc = "Crop the icon edges",
                 min = 0.01, max = 0.15, step = 0.005,
-                get = function() return CooldownManagerDBHandler.profile.iconZoom end,
+                get = function() 
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return 0.08 end
+                    return CooldownManagerDBHandler.profile.iconZoom 
+                end,
                 set = function(_, val)
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
                     CooldownManagerDBHandler.profile.iconZoom = val
                     TrySkin()
                 end,
@@ -210,6 +234,7 @@ function SetupOptions()
                 desc = "Choose the border color",
                 hasAlpha = false,
                 get = function()
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return 0, 0, 0 end
                     local c = CooldownManagerDBHandler.profile.borderColor
                     if not c then
                         c = { r = 0, g = 0, b = 0 } -- fallback default if missing
@@ -219,6 +244,7 @@ function SetupOptions()
                 end,
                 
                 set = function(_, r, g, b)
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
                     CooldownManagerDBHandler.profile.borderColor = { r = r, g = g, b = b }
                     TrySkin()
                 end,
@@ -228,8 +254,12 @@ function SetupOptions()
                 type = "toggle",
                 name = "Show Buff Duration Swipe",
                 desc = "Toggle whether Blizzard icons use buff durations",
-                get = function() return CooldownManagerDBHandler.profile.useAuraForCooldown ~= false end,
+                get = function() 
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return true end
+                    return CooldownManagerDBHandler.profile.useAuraForCooldown ~= false 
+                end,
                 set = function(_, val)
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
                     CooldownManagerDBHandler.profile.useAuraForCooldown = val
                     TrySkin()
                 end,
@@ -239,8 +269,12 @@ function SetupOptions()
                 type = "toggle",
                 name = "Enable Icon Reskinning",
                 desc = "Toggle whether to apply custom styling (borders, zoom, colors) to cooldown icons",
-                get = function() return CooldownManagerDBHandler.profile.enableIconReskinning ~= false end,
+                get = function() 
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return true end
+                    return CooldownManagerDBHandler.profile.enableIconReskinning ~= false 
+                end,
                 set = function(_, val)
+                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
                     CooldownManagerDBHandler.profile.enableIconReskinning = val
                     TrySkin()
                 end,
@@ -460,7 +494,197 @@ function SetupOptions()
                 name = "Cast Bars",
                 order = 31,
                 childGroups = "tab",
-                args = {},
+                args = {
+                    independent = {
+                        type = "group",
+                        name = "Independent Cast Bar",
+                        order = 1,
+                        args = {
+                            enabled = {
+                                type = "toggle",
+                                name = "Enable Independent Cast Bar",
+                                desc = "Enable a single cast bar that can be attached to any viewer",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.enabled or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    CooldownManagerDBHandler.profile.independentCastBar.enabled = val 
+                                end,
+                                order = 1,
+                            },
+                            attachToViewer = {
+                                type = "select",
+                                name = "Attach to Viewer",
+                                desc = "Choose which viewer to attach the cast bar to",
+                                values = {
+                                    EssentialCooldownViewer = "Essential Cooldown Viewer",
+                                    UtilityCooldownViewer = "Utility Cooldown Viewer", 
+                                    BuffIconCooldownViewer = "Buff Icon Cooldown Viewer"
+                                },
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.attachToViewer or "EssentialCooldownViewer"
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.attachToViewer = val 
+                                end,
+                                order = 2,
+                            },
+                            width = {
+                                type = "range",
+                                name = "Width",
+                                desc = "Width of the cast bar",
+                                min = 50, max = 800, step = 5,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.width or 300 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.width = val 
+                                end,
+                                disabled = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.autoWidth or false
+                                end,
+                                order = 3,
+                            },
+                            autoWidth = {
+                                type = "toggle",
+                                name = "Auto Width",
+                                desc = "Automatically match the width of the attached viewer",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.autoWidth or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.autoWidth = val 
+                                end,
+                                order = 3.5,
+                            },
+                            height = {
+                                type = "range",
+                                name = "Height",
+                                desc = "Height of the cast bar",
+                                min = 8, max = 40, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.height or 22 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.height = val 
+                                end,
+                                order = 4,
+                            },
+                            offsetX = {
+                                type = "range",
+                                name = "Horizontal Offset",
+                                desc = "Horizontal position offset from viewer",
+                                min = -200, max = 200, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.offsetX or 0 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.offsetX = val 
+                                end,
+                                order = 5,
+                            },
+                            offsetY = {
+                                type = "range",
+                                name = "Vertical Offset",
+                                desc = "Vertical position offset from viewer",
+                                min = -100, max = 100, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.offsetY or 17 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.offsetY = val 
+                                end,
+                                order = 6,
+                            },
+                            fontSize = {
+                                type = "range",
+                                name = "Font Size",
+                                desc = "Size of the text on the cast bar",
+                                min = 8, max = 32, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.fontSize or 16 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.fontSize = val 
+                                end,
+                                order = 7,
+                            },
+                            textPosition = {
+                                type = "select",
+                                name = "Text Position",
+                                desc = "Position of the text on the cast bar",
+                                values = {
+                                    left = "Left",
+                                    center = "Center",
+                                    right = "Right"
+                                },
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.textPosition or "center"
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.textPosition = val 
+                                end,
+                                order = 8,
+                            },
+                            texture = {
+                                type = "select",
+                                dialogControl = 'LSM30_Statusbar',
+                                name = "Cast Bar Texture",
+                                desc = "Choose the texture for the cast bar",
+                                values = LSM:HashTable("statusbar"),
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.textureName or "Blizzard"
+                                end,
+                                set = function(_, key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.textureName = key
+                                    local path = LSM:Fetch("statusbar", key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.texture = path
+                                end,
+                                order = 9,
+                            },
+                            classColor = {
+                                type = "toggle",
+                                name = "Use Class Color",
+                                desc = "Color the cast bar by your class color",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.classColor or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.classColor = val 
+                                end,
+                                order = 10,
+                            },
+                            customColor = {
+                                type = "color",
+                                name = "Custom Bar Color",
+                                desc = "Pick a custom color if not using class color",
+                                hasAlpha = false,
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    local c = CooldownManagerDBHandler.profile.independentCastBar.customColor or { r = 1, g = 0.7, b = 0 }
+                                    return c.r, c.g, c.b
+                                end,
+                                set = function(_, r, g, b)
+                                    CooldownManagerDBHandler.profile.independentCastBar.customColor = { r = r, g = g, b = b }
+                                end,
+                                order = 11,
+                            },
+                        },
+                    },
+                },
             },
             
             layout = {
@@ -916,17 +1140,6 @@ end
                         TrySkin()
                     end,
                 },
-                hideOutOfCombat = {
-                    type = "toggle",
-                    name = "Hide Out of Combat",
-                    desc = "Hide this entire viewer when not in combat",
-                    get = function() return GetViewerSetting(v, "hideOutOfCombat", false) end,
-                    set = function(_, val) 
-                        SetViewerSetting(v, "hideOutOfCombat", val)
-                        UpdateCombatVisibility()
-                    end,
-                    order = 9,
-                },
                 
             },
         }
@@ -1094,26 +1307,16 @@ end)
 
 
 
--- Combat visibility management
+-- Combat visibility management (resource bars only)
 function UpdateCombatVisibility()
     local inCombat = InCombatLockdown()
     
     for _, viewerName in ipairs(viewerNames) do
         local viewer = _G[viewerName]
         
-        -- Handle main viewer visibility
+        -- Always show main viewer - no combat hiding functionality
         if viewer then
-            local hideOutOfCombat = GetViewerSetting(viewerName, "hideOutOfCombat", false)
-            
-            if hideOutOfCombat then
-                if inCombat then
-                    viewer:Show()
-                else
-                    viewer:Hide()
-                end
-            else
-                viewer:Show() -- Always show if setting is disabled
-            end
+            viewer:Show()
         end
         
         -- Handle resource bar visibility (completely independent of main viewer)
