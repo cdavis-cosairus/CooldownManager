@@ -1,5 +1,6 @@
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceDB = LibStub("AceDB-3.0")
+local LSM = LibStub("LibSharedMedia-3.0")
 
 local viewers = {
     "EssentialCooldownViewer",
@@ -44,8 +45,28 @@ end
 
 local castData = {}
 
+-- Make these global so config.lua can access them
+CooldownManagerCastBars = {}
+local castBars = CooldownManagerCastBars
 
-local castBars = {}
+-- Helper function to check if cast bar should show based on combat settings
+local function ShouldShowCastBar(viewerName)
+    if not CooldownManagerDBHandler.profile.viewers[viewerName] then return false end
+    local settings = CooldownManagerDBHandler.profile.viewers[viewerName]
+    
+    -- First check if cast bar is enabled at all
+    if not settings.showCastBar then return false end
+    
+    -- Check combat visibility setting
+    local hideCastBarOutOfCombat = settings.hideCastBarOutOfCombat
+    if hideCastBarOutOfCombat then
+        -- Only show if in combat
+        return InCombatLockdown()
+    end
+    
+    -- Show if combat setting is disabled
+    return true
+end
 
 function UpdateCastBar(viewer)
     if not viewer then return end
@@ -55,7 +76,7 @@ function UpdateCastBar(viewer)
     local settings = CooldownManagerDBHandler.profile.viewers[name]
     if not settings then return end
 
-    if not settings.showCastBar then
+    if not ShouldShowCastBar(name) then
         if castBars[name] then castBars[name]:Hide() end
         castData[name] = nil
         return
@@ -304,8 +325,13 @@ local function UpdateEssenceTracking()
     essenceData.max = max
 end
 
+-- Make these global so config.lua can access them
+CooldownManagerResourceBars = {}
+local resourceBars = CooldownManagerResourceBars
 
-local resourceBars = {}
+-- Single independent resource bar instead of per-viewer bars
+local independentResourceBar = nil
+local independentSecondaryResourceBar = nil
 
 local secondaryResourceBars = secondaryResourceBars or {}
 
@@ -317,11 +343,17 @@ local function UpdateResourceBar(viewer)
 
     local settings = CooldownManagerDBHandler.profile.viewers[name]
     local showResourceBar = settings.showResourceBar
+    
+    -- Don't interfere with combat visibility - only return if resource bar is completely disabled
+    -- Let UpdateCombatVisibility() handle showing/hiding based on combat settings
     if not showResourceBar then
+        -- Only hide if the bar exists and resource bar feature is completely disabled
         if resourceBars[name] then resourceBars[name]:Hide() end
         if secondaryResourceBars[name] then secondaryResourceBars[name]:Hide() end
         return
     end
+
+    -- This function only creates/updates bars - UpdateCombatVisibility() handles visibility
 
     if not resourceBars[name] then
         local bar = CreateFrame("StatusBar", nil, viewer)
@@ -356,7 +388,9 @@ local function UpdateResourceBar(viewer)
     end
     
     local bar = resourceBars[name]
-    bar:Show()
+    
+    -- Don't automatically show - let UpdateCombatVisibility handle visibility
+    -- bar:Show()  -- Removed this line to prevent overriding combat visibility
     
     -- Update dynamic settings
     local width = PixelPerfect(viewer:GetWidth())
@@ -683,6 +717,174 @@ end
     elseif secondaryResourceBars[name] then
         secondaryResourceBars[name]:Hide()
     end
+
+    -- Don't apply combat visibility here - let UpdateCombatVisibility() handle all visibility logic
+    -- This function is only responsible for creating/updating bars, not showing/hiding them
+end
+
+-- NEW: Independent Resource Bar System
+local function UpdateIndependentResourceBar()
+    local profile = CooldownManagerDBHandler.profile
+    if not profile.independentResourceBar or not profile.independentResourceBar.enabled then
+        if independentResourceBar then 
+            independentResourceBar:Hide() 
+            independentResourceBar = nil
+        end
+        if independentSecondaryResourceBar then 
+            independentSecondaryResourceBar:Hide() 
+            independentSecondaryResourceBar = nil
+        end
+        return
+    end
+
+    local settings = profile.independentResourceBar
+    local attachToViewer = settings.attachToViewer or "EssentialCooldownViewer"
+    local viewer = _G[attachToViewer]
+    
+    if not viewer then return end
+
+    -- Create main resource bar if it doesn't exist
+    if not independentResourceBar then
+        local bar = CreateFrame("StatusBar", "CooldownManagerIndependentResourceBar", UIParent)
+        local texture = settings.texture or "Interface\\TargetingFrame\\UI-StatusBar"
+        bar:SetStatusBarTexture(texture)
+        bar:SetStatusBarColor(0, 0.6, 1, 1)
+        bar:SetMinMaxValues(0, 100)
+        bar:SetValue(100)
+        bar.Ticks = {}
+
+        bar.Background = bar:CreateTexture(nil, "BACKGROUND")
+        bar.Background:SetAllPoints()
+        bar.Background:SetColorTexture(0.1, 0.1, 0.1, 1)
+
+        bar.TextFrame = CreateFrame("Frame", nil, bar)
+        bar.TextFrame:SetAllPoints(bar)
+        bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
+
+        bar.Text = bar.TextFrame:CreateFontString(nil, "OVERLAY")
+        bar.Text:SetFont("Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF", settings.fontSize or 20, "OUTLINE")
+        bar.Text:SetPoint("CENTER", bar.TextFrame, "CENTER", PixelPerfect(2), PixelPerfect(1))
+        bar.Text:SetTextColor(1, 1, 1)
+
+        AddPixelBorder(bar)
+        independentResourceBar = bar
+    end
+
+    local bar = independentResourceBar
+    
+    -- Update bar properties
+    local width
+    if settings.autoWidth then
+        -- Calculate width based on the attached viewer (same logic as regular resource bars)
+        if viewer.Selection then
+            width = viewer.Selection:GetWidth()
+            if width == 0 or not width then
+                local viewerSettings = CooldownManagerDBHandler.profile.viewers[attachToViewer] or {}
+                local size = viewerSettings.iconSize or 58
+                local spacing = (viewerSettings.iconSpacing or -4) - 2
+                local columns = viewerSettings.iconColumns or 14
+                width = (size + spacing) * columns - spacing
+            else
+                local padding = 6
+                width = width - (padding * 3)
+            end
+        else
+            -- Fallback calculation if no Selection frame
+            local viewerSettings = CooldownManagerDBHandler.profile.viewers[attachToViewer] or {}
+            local size = viewerSettings.iconSize or 58
+            local spacing = (viewerSettings.iconSpacing or -4) - 2
+            local columns = viewerSettings.iconColumns or 14
+            width = (size + spacing) * columns - spacing
+        end
+        width = math.max(width or 300, 50) -- Ensure minimum width
+    else
+        width = settings.width or 300
+    end
+    
+    width = PixelPerfect(width)
+    local height = PixelPerfect(settings.height or 16)
+    bar:SetSize(width, height)
+    
+    -- Update texture - use LSM if available, otherwise default
+    local texture = settings.texture or "Interface\\TargetingFrame\\UI-StatusBar"
+    if settings.textureName and LSM then
+        texture = LSM:Fetch("statusbar", settings.textureName) or texture
+    end
+    bar:SetStatusBarTexture(texture)
+    
+    if bar.Text then
+        bar.Text:SetFont("Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF", settings.fontSize or 20, "OUTLINE")
+    end
+
+    -- Position relative to viewer
+    bar:ClearAllPoints()
+    local offsetX = settings.offsetX or 0
+    local offsetY = settings.offsetY or 20
+    bar:SetPoint("TOP", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+
+    -- Update colors and power logic
+    local _, class = UnitClass("player")
+    local powerType = GetRelevantPowerType()
+
+    -- Coloring
+    if settings.classColor then
+        local classColor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
+        if classColor then
+            bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
+        end
+    elseif settings.powerColor then
+        local powerColor = GetPowerBarColor(UnitPowerType("player"))
+        if powerColor then
+            bar:SetStatusBarColor(powerColor.r, powerColor.g, powerColor.b, 1)
+        end
+    else
+        local c = settings.customColor or { r = 0, g = 0.6, b = 1 }
+        bar:SetStatusBarColor(c.r, c.g, c.b, 1)
+    end
+
+    -- Handle ticks and power display logic (simplified version)
+    -- Hide ticks if not applicable
+    if class ~= "EVOKER" and class ~= "MAGE" and class ~= "PALADIN" then
+        for _, tick in ipairs(bar.Ticks) do tick:Hide() end
+    end
+
+    -- Resource value calculation
+    local current, max
+    if powerType == "MAELSTROM_WEAPON_BUFF" then
+        local aura = GetAuraDataBySpellID("player", 344179)
+        current = aura and aura.applications or 0
+        max = 10
+    elseif powerType == "ICICLE_BUFF" then
+        local aura = GetAuraDataBySpellID("player", 205473)
+        current = aura and aura.applications or 0
+        max = 5
+    elseif powerType == Enum.PowerType.Essence then
+        current = essenceData.current + (essenceData.partial or 0)
+        max = essenceData.max
+    elseif type(powerType) == "number" then
+        current = UnitPower("player", powerType)
+        max = UnitPowerMax("player", powerType)
+    else
+        current = 0
+        max = 0
+    end
+
+    -- Bar fill
+    if max > 0 then
+        bar:SetMinMaxValues(0, max)
+        bar:SetValue(current)
+        if bar.Text then
+            if powerType == Enum.PowerType.Mana then
+                bar.Text:SetText(math.floor((current / max) * 100) .. "%")
+            else
+                bar.Text:SetText(math.floor(current))
+            end
+        end
+    end
+
+    -- Combat visibility handled by UpdateCombatVisibility() in config.lua
+    -- Make this bar accessible globally for config.lua
+    CooldownManagerResourceBars["Independent"] = bar
 end
 
 local function UpdateSecondaryBar(viewer)
@@ -791,6 +993,9 @@ end
 
 local function UpdateAllResourceBars()
     UpdateEssenceTracking()
+
+    -- Update independent resource bar
+    UpdateIndependentResourceBar()
 
     for _, viewerName in ipairs(viewers) do
         local viewer = _G[viewerName]
@@ -1619,8 +1824,21 @@ db.spellPriority = cleanedPriority -- Save cleaned list back
         viewer.Selection:SetPoint("BOTTOMRIGHT", viewer, "BOTTOMRIGHT", 0, 0)
     end
 
-    UpdateResourceBar(viewer)
-    UpdateCastBar(viewer)
+    -- Ensure bars exist but don't override combat visibility - just create them if needed
+    local viewerName = viewer:GetName()
+    if CooldownManagerDBHandler.profile.viewers[viewerName] then
+        local settings = CooldownManagerDBHandler.profile.viewers[viewerName]
+        
+        -- Create resource bar if enabled but doesn't exist
+        if settings.showResourceBar and not CooldownManagerResourceBars[viewerName] then
+            UpdateResourceBar(viewer)
+        end
+        
+        -- Create cast bar if enabled but doesn't exist  
+        if settings.showCastBar and not CooldownManagerCastBars[viewerName] then
+            UpdateCastBar(viewer)
+        end
+    end
 end
 
 
@@ -1915,7 +2133,10 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
                 end
     
                 if spellName and startTime and endTime then
-                    bar:Show() -- Show cast bar frame
+                    -- Only show cast bar if combat visibility allows it
+                    if ShouldShowCastBar(name) then
+                        bar:Show() -- Show cast bar frame
+                    end
                     bar:SetScript("OnUpdate", nil) -- Stop any previous update to reset
     
                     bar.Background:SetAlpha(1)

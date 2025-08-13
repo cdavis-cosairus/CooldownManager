@@ -253,7 +253,207 @@ function SetupOptions()
                 name = "Resource Bars",
                 order = 30,
                 childGroups = "tab",
-                args = {},
+                args = {
+                    independent = {
+                        type = "group",
+                        name = "Independent Resource Bar",
+                        order = 1,
+                        args = {
+                            enabled = {
+                                type = "toggle",
+                                name = "Enable Independent Resource Bar",
+                                desc = "Enable a single resource bar that can be attached to any viewer",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.enabled or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    CooldownManagerDBHandler.profile.independentResourceBar.enabled = val 
+                                    UpdateCombatVisibility()
+                                end,
+                                order = 1,
+                            },
+                            attachToViewer = {
+                                type = "select",
+                                name = "Attach to Viewer",
+                                desc = "Choose which viewer to attach the resource bar to",
+                                values = {
+                                    EssentialCooldownViewer = "Essential Cooldown Viewer",
+                                    UtilityCooldownViewer = "Utility Cooldown Viewer", 
+                                    BuffIconCooldownViewer = "Buff Icon Cooldown Viewer"
+                                },
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.attachToViewer or "EssentialCooldownViewer"
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.attachToViewer = val 
+                                end,
+                                order = 2,
+                            },
+                            hideOutOfCombat = {
+                                type = "toggle",
+                                name = "Hide Out of Combat",
+                                desc = "Hide the resource bar when not in combat",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.hideOutOfCombat or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.hideOutOfCombat = val 
+                                    UpdateCombatVisibility()
+                                end,
+                                order = 3,
+                            },
+                            width = {
+                                type = "range",
+                                name = "Width",
+                                desc = "Width of the resource bar",
+                                min = 50, max = 800, step = 5,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.width or 300 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.width = val 
+                                end,
+                                disabled = function()
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.autoWidth or false
+                                end,
+                                order = 4,
+                            },
+                            autoWidth = {
+                                type = "toggle",
+                                name = "Auto Width",
+                                desc = "Automatically match the width of the attached viewer",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.autoWidth or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.autoWidth = val 
+                                end,
+                                order = 4.5,
+                            },
+                            height = {
+                                type = "range",
+                                name = "Height",
+                                desc = "Height of the resource bar",
+                                min = 8, max = 40, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.height or 16 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.height = val 
+                                end,
+                                order = 5,
+                            },
+                            offsetX = {
+                                type = "range",
+                                name = "Horizontal Offset",
+                                desc = "Horizontal position offset from viewer",
+                                min = -200, max = 200, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.offsetX or 0 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.offsetX = val 
+                                end,
+                                order = 6,
+                            },
+                            offsetY = {
+                                type = "range",
+                                name = "Vertical Offset",
+                                desc = "Vertical position offset from viewer",
+                                min = -100, max = 100, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.offsetY or 20 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.offsetY = val 
+                                end,
+                                order = 7,
+                            },
+                            fontSize = {
+                                type = "range",
+                                name = "Font Size",
+                                desc = "Size of the text on the resource bar",
+                                min = 8, max = 32, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.fontSize or 20 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.fontSize = val 
+                                end,
+                                order = 8,
+                            },
+                            texture = {
+                                type = "select",
+                                dialogControl = 'LSM30_Statusbar',
+                                name = "Resource Bar Texture",
+                                desc = "Choose the texture for the resource bar",
+                                values = LSM:HashTable("statusbar"),
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.textureName or "Blizzard"
+                                end,
+                                set = function(_, key)
+                                    CooldownManagerDBHandler.profile.independentResourceBar.textureName = key
+                                    local path = LSM:Fetch("statusbar", key)
+                                    CooldownManagerDBHandler.profile.independentResourceBar.texture = path
+                                end,
+                                order = 9,
+                            },
+                            classColor = {
+                                type = "toggle",
+                                name = "Use Class Color",
+                                desc = "Color the resource bar by your class color",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.classColor or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.classColor = val 
+                                end,
+                                order = 10,
+                            },
+                            powerColor = {
+                                type = "toggle",
+                                name = "Use Class Power Color",
+                                desc = "Color the resource bar by your class power color",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.powerColor or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.powerColor = val 
+                                end,
+                                order = 11,
+                            },
+                            customColor = {
+                                type = "color",
+                                name = "Custom Bar Color",
+                                desc = "Pick a custom color if not using class color",
+                                hasAlpha = false,
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    local c = CooldownManagerDBHandler.profile.independentResourceBar.customColor or { r = 0, g = 0.6, b = 1 }
+                                    return c.r, c.g, c.b
+                                end,
+                                set = function(_, r, g, b)
+                                    CooldownManagerDBHandler.profile.independentResourceBar.customColor = { r = r, g = g, b = b }
+                                end,
+                                order = 12,
+                            },
+                        },
+                    },
+                },
             },
             castBars = {
                 type = "group",
@@ -395,6 +595,17 @@ function SetupOptions()
                         SetViewerSetting(viewerName, "resourceBarCustomColor", { r = r, g = g, b = b })
                     end,
                     order = 8,
+                },
+                hideResourceBarOutOfCombat = {
+                    type = "toggle",
+                    name = "Hide Resource Bar Out of Combat",
+                    desc = "Hide the resource bar when not in combat",
+                    get = function() return GetViewerSetting(viewerName, "hideResourceBarOutOfCombat", false) end,
+                    set = function(_, val) 
+                        SetViewerSetting(viewerName, "hideResourceBarOutOfCombat", val)
+                        UpdateCombatVisibility()
+                    end,
+                    order = 9,
                 },                
             }
         }
@@ -482,13 +693,13 @@ function SetupOptions()
                 end,
                 order = 7,
             },
-            hideOutOfCombat = {
+            hideCastBarOutOfCombat = {
                 type = "toggle",
-                name = "Hide Out of Combat",
-                desc = "Hide this viewer when not in combat",
-                get = function() return GetViewerSetting(viewerName, "hideOutOfCombat", false) end,
+                name = "Hide Cast Bar Out of Combat",
+                desc = "Hide the cast bar when not in combat",
+                get = function() return GetViewerSetting(viewerName, "hideCastBarOutOfCombat", false) end,
                 set = function(_, val) 
-                    SetViewerSetting(viewerName, "hideOutOfCombat", val)
+                    SetViewerSetting(viewerName, "hideCastBarOutOfCombat", val)
                     UpdateCombatVisibility()
                 end,
                 order = 8,
@@ -705,6 +916,17 @@ end
                         TrySkin()
                     end,
                 },
+                hideOutOfCombat = {
+                    type = "toggle",
+                    name = "Hide Out of Combat",
+                    desc = "Hide this entire viewer when not in combat",
+                    get = function() return GetViewerSetting(v, "hideOutOfCombat", false) end,
+                    set = function(_, val) 
+                        SetViewerSetting(v, "hideOutOfCombat", val)
+                        UpdateCombatVisibility()
+                    end,
+                    order = 9,
+                },
                 
             },
         }
@@ -878,6 +1100,8 @@ function UpdateCombatVisibility()
     
     for _, viewerName in ipairs(viewerNames) do
         local viewer = _G[viewerName]
+        
+        -- Handle main viewer visibility
         if viewer then
             local hideOutOfCombat = GetViewerSetting(viewerName, "hideOutOfCombat", false)
             
@@ -890,6 +1114,67 @@ function UpdateCombatVisibility()
             else
                 viewer:Show() -- Always show if setting is disabled
             end
+        end
+        
+        -- Handle resource bar visibility (completely independent of main viewer)
+        local hideResourceBarOutOfCombat = GetViewerSetting(viewerName, "hideResourceBarOutOfCombat", false)
+        local showResourceBar = GetViewerSetting(viewerName, "showResourceBar", false)
+        
+        if CooldownManagerResourceBars and CooldownManagerResourceBars[viewerName] and showResourceBar then
+            local resourceBar = CooldownManagerResourceBars[viewerName]
+            if hideResourceBarOutOfCombat then
+                if inCombat then
+                    resourceBar:Show()
+                else
+                    resourceBar:Hide()
+                end
+            else
+                resourceBar:Show() -- Always show if combat setting is disabled and resource bar is enabled
+            end
+        end
+        
+        -- Handle cast bar visibility (completely independent of main viewer)
+        local hideCastBarOutOfCombat = GetViewerSetting(viewerName, "hideCastBarOutOfCombat", false)
+        local showCastBar = GetViewerSetting(viewerName, "showCastBar", false)
+        
+        if CooldownManagerCastBars and CooldownManagerCastBars[viewerName] and showCastBar then
+            local castBar = CooldownManagerCastBars[viewerName]
+            if hideCastBarOutOfCombat then
+                if inCombat then
+                    -- Only show if there's an active cast or channel
+                    local spellName = UnitCastingInfo("player") or UnitChannelInfo("player")
+                    if spellName then
+                        castBar:Show()
+                    end
+                else
+                    castBar:Hide() -- Always hide out of combat when setting is enabled
+                end
+            else
+                -- Show if combat setting is disabled and cast bar is enabled
+                local spellName = UnitCastingInfo("player") or UnitChannelInfo("player")
+                if spellName then
+                    castBar:Show()
+                end
+            end
+        end
+    end
+    
+    -- Handle independent resource bar visibility (completely independent)
+    if CooldownManagerDBHandler.profile.independentResourceBar and 
+       CooldownManagerDBHandler.profile.independentResourceBar.enabled and
+       CooldownManagerResourceBars and CooldownManagerResourceBars["Independent"] then
+        
+        local independentBar = CooldownManagerResourceBars["Independent"]
+        local hideOutOfCombat = CooldownManagerDBHandler.profile.independentResourceBar.hideOutOfCombat
+        
+        if hideOutOfCombat then
+            if inCombat then
+                independentBar:Show()
+            else
+                independentBar:Hide()
+            end
+        else
+            independentBar:Show() -- Always show if combat setting is disabled
         end
     end
 end
@@ -904,7 +1189,8 @@ combatWatcher:SetScript("OnEvent", function(self, event)
         -- Small delay to ensure viewers are created
         C_Timer.After(0.5, UpdateCombatVisibility)
     else
-        UpdateCombatVisibility()
+        -- Small delay to let other updates finish first
+        C_Timer.After(0.1, UpdateCombatVisibility)
     end
 end)
 
