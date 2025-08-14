@@ -3,6 +3,19 @@ local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local LSM = LibStub("LibSharedMedia-3.0")
 
+-- Performance optimizations
+local cachedProfile = nil
+local lastProfileUpdate = 0
+local spellInfoCache = {}
+local needsReload = false
+
+-- Constants
+local CONFIG_CONSTANTS = {
+    CACHE_DURATION = 0.1,
+    UI_UPDATE_DELAY = 0.05,
+    DEFAULT_ICON = 134400,
+    RELOAD_UI_COLOR = "|cff00ffffReload UI|r"
+}
 
 local viewerNames = {
     "EssentialCooldownViewer",
@@ -10,7 +23,34 @@ local viewerNames = {
     "BuffIconCooldownViewer",
 }
 
-local needsReload = false
+-- Optimized profile access with caching
+local function GetCachedProfile()
+    local now = GetTime()
+    if not cachedProfile or (now - lastProfileUpdate) > CONFIG_CONSTANTS.CACHE_DURATION then
+        cachedProfile = CooldownManagerDBHandler and CooldownManagerDBHandler.profile
+        lastProfileUpdate = now
+    end
+    return cachedProfile
+end
+
+-- Cached spell info lookup
+local function GetCachedSpellInfo(spellID)
+    if not spellInfoCache[spellID] then
+        local spellInfo = C_Spell.GetSpellInfo(spellID)
+        if spellInfo then
+            spellInfoCache[spellID] = {
+                name = spellInfo.name or "Unknown",
+                iconID = spellInfo.iconID or CONFIG_CONSTANTS.DEFAULT_ICON
+            }
+        else
+            spellInfoCache[spellID] = {
+                name = "Unknown",
+                iconID = CONFIG_CONSTANTS.DEFAULT_ICON
+            }
+        end
+    end
+    return spellInfoCache[spellID]
+end
 
 
 SetupOptions = nil
@@ -20,26 +60,29 @@ viewerTabs = nil
 
 
 local function GetViewerSetting(viewer, key, default)
-    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+    local profile = GetCachedProfile()
+    if not profile then
         return default
     end
-    CooldownManagerDBHandler.profile.viewers = CooldownManagerDBHandler.profile.viewers or {}
-    CooldownManagerDBHandler.profile.viewers[viewer] = CooldownManagerDBHandler.profile.viewers[viewer] or {}
-    local value = CooldownManagerDBHandler.profile.viewers[viewer][key]
-    if value == nil then
-        return default
-    else
-        return value
-    end
+    
+    profile.viewers = profile.viewers or {}
+    profile.viewers[viewer] = profile.viewers[viewer] or {}
+    local value = profile.viewers[viewer][key]
+    return value ~= nil and value or default
 end
 
 function SetViewerSetting(viewer, key, value)
-    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+    local profile = GetCachedProfile()
+    if not profile then
         return
     end
-    CooldownManagerDBHandler.profile.viewers = CooldownManagerDBHandler.profile.viewers or {}
-    CooldownManagerDBHandler.profile.viewers[viewer] = CooldownManagerDBHandler.profile.viewers[viewer] or {}
-    CooldownManagerDBHandler.profile.viewers[viewer][key] = value
+    
+    profile.viewers = profile.viewers or {}
+    profile.viewers[viewer] = profile.viewers[viewer] or {}
+    profile.viewers[viewer][key] = value
+    
+    -- Invalidate cache since we modified the profile
+    cachedProfile = nil
     TrySkin()
 end
 
@@ -48,18 +91,21 @@ local viewerTabs
 
 local function generateHiddenSpellArgs(viewerName)
     local args = {}
-    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+    local profile = GetCachedProfile()
+    if not profile then
         return args
     end
-    local db = CooldownManagerDBHandler.profile.viewers[viewerName]
-    if not db or not db.hiddenCooldowns or not db.hiddenCooldowns[viewerName] then return args end
+    
+    local db = profile.viewers[viewerName]
+    if not db or not db.hiddenCooldowns or not db.hiddenCooldowns[viewerName] then 
+        return args 
+    end
 
     for spellID, hidden in pairs(db.hiddenCooldowns[viewerName]) do
         if hidden then
-            local spellInfo = C_Spell.GetSpellInfo(spellID)
-            local name = spellInfo and spellInfo.name or "Unknown"
-            local icon = spellInfo and spellInfo.iconID or 134400
-            local displayName = string.format("|T%d:16|t %s (ID: %d)", icon, name, spellID)
+            local spellInfo = GetCachedSpellInfo(spellID)
+            local displayName = string.format("|T%d:16|t %s (ID: %d)", 
+                spellInfo.iconID, spellInfo.name, spellID)
 
             args["hidden_" .. spellID] = {
                 type = "execute",
@@ -69,14 +115,15 @@ local function generateHiddenSpellArgs(viewerName)
                     if db.hiddenCooldowns and db.hiddenCooldowns[viewerName] then
                         db.hiddenCooldowns[viewerName][spellID] = nil
                     end
-                
+                    
                     needsReload = true
-                
-                    C_Timer.After(0.05, function()
+                    cachedProfile = nil -- Invalidate cache
+                    
+                    C_Timer.After(CONFIG_CONSTANTS.UI_UPDATE_DELAY, function()
                         viewerTabs.args.hideSpells.args[viewerName].args.hiddenList.args = generateHiddenSpellArgs(viewerName)
                         viewerTabs.args.hideSpells.args.reloadUI = {
                             type = "execute",
-                            name = "|cff00ffffReload UI|r",
+                            name = CONFIG_CONSTANTS.RELOAD_UI_COLOR,
                             desc = "Click to reload and apply unhidden spells",
                             confirm = true,
                             func = function()
@@ -85,7 +132,7 @@ local function generateHiddenSpellArgs(viewerName)
                             order = 9999,
                         }
                 
-                        AceConfigRegistry:NotifyChange("CooldownManager")
+                        AceConfigRegistry:NotifyChange(CONFIG_CONSTANTS.ADDON_NAME)
                     end)
                 end,
                 
@@ -102,74 +149,64 @@ end
 
 local function generateCustomSpellArgs(viewerName)
     local args = {}
-    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+    local profile = GetCachedProfile()
+    if not profile then
         return args
     end
-    local db = CooldownManagerDBHandler.profile.viewers[viewerName]
-    if not db or not db.customSpells then return args end
+    
+    local db = profile.viewers[viewerName]
+    if not db or not db.customSpells then 
+        return args 
+    end
 
     local viewer = _G[viewerName]
-
-    local spellList
     local specID = GetSpecializationInfo(GetSpecialization())
-    spellList = (db.customSpells and db.customSpells[specID]) or {}
-    
+    local spellList = (db.customSpells and db.customSpells[specID]) or {}
 
     for spellID, enabled in pairs(spellList) do
         spellID = tonumber(spellID)
 
-        local shouldShow = false
-        if viewerName == "BuffIconCooldownViewer" then
-            shouldShow = true
-        else
-            shouldShow = IsPlayerSpell(spellID)
-        end
+        local shouldShow = (viewerName == "BuffIconCooldownViewer") or IsPlayerSpell(spellID)
 
         if enabled and shouldShow then
-            foundInViewer = true
+            local spellInfo = GetCachedSpellInfo(spellID)
+            local displayName = string.format("|T%d:16|t %s (ID: %d)", 
+                spellInfo.iconID, spellInfo.name, spellID)
 
+            args["custom_" .. spellID] = {
+                type = "execute",
+                name = displayName,
+                desc = "Click to remove this spell from " .. viewerName,
+                func = function()
+                    local currentSpecID = GetSpecializationInfo(GetSpecialization())
+                    if db.customSpells and db.customSpells[currentSpecID] then
+                        db.customSpells[currentSpecID][spellID] = nil
+                    end
 
-            if foundInViewer then
-                local spellInfo = C_Spell.GetSpellInfo(spellID)
-                local name = spellInfo and spellInfo.name or "Unknown"
-                local icon = spellInfo and spellInfo.iconID or 134400
-                local displayName = string.format("|T%d:16|t %s (ID: %d)", icon, name, spellID)
+                    db.spellPriority = db.spellPriority or {}
+                    local index = tIndexOf(db.spellPriority, spellID)
+                    if index then
+                        table.remove(db.spellPriority, index)
+                    end
 
-                args["custom_" .. spellID] = {
-                    type = "execute",
-                    name = displayName,
-                    desc = "Click to remove this spell from " .. viewerName,
-                    func = function()
-                        local specID = GetSpecializationInfo(GetSpecialization())
-                        if db.customSpells and db.customSpells[specID] then
-                            db.customSpells[specID][spellID] = nil
-                        end
-
-                        db.spellPriority = db.spellPriority or {}
-                        local index = tIndexOf(db.spellPriority, spellID)
-                        if index then
-                            table.remove(db.spellPriority, index)
-                        end
-
-                        if viewer then
-                            for _, icon in ipairs({ viewer:GetChildren() }) do
-                                if icon._spellID == spellID then
-                                    icon:Hide()
-                                    icon:SetParent(nil)
-                                    icon._spellID = nil
-                                end
+                    if viewer then
+                        for _, icon in ipairs({ viewer:GetChildren() }) do
+                            if icon._spellID == spellID then
+                                icon:Hide()
+                                icon:SetParent(nil)
+                                icon._spellID = nil
                             end
                         end
+                    end
 
-                        C_Timer.After(0.05, TrySkin)
-                        viewerTabs.args.customSpells.args[viewerName].args.spellList.args = generateCustomSpellArgs(viewerName)
+                    C_Timer.After(CONFIG_CONSTANTS.UI_UPDATE_DELAY, TrySkin)
+                    viewerTabs.args.customSpells.args[viewerName].args.spellList.args = generateCustomSpellArgs(viewerName)
 
-                        AceConfigRegistry:NotifyChange("CooldownManager")
-                    end,
-                    width = "full",
-                    order = spellID,
-                }
-            end
+                    AceConfigRegistry:NotifyChange(CONFIG_CONSTANTS.ADDON_NAME)
+                end,
+                width = CONFIG_CONSTANTS.FULL_WIDTH,
+                order = spellID,
+            }
         end
     end
 
@@ -202,13 +239,15 @@ function SetupOptions()
                 desc = "Adjust thickness of the icon border",
                 min = 0, max = 5, step = 1,
                 get = function() 
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return 1 end
-                    return CooldownManagerDBHandler.profile.borderSize 
+                    local profile = GetCachedProfile()
+                    return profile and profile.borderSize or 1
                 end,
                 set = function(_, val)
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
-                    CooldownManagerDBHandler.profile.borderSize = val
-                    TrySkin()
+                    local profile = GetCachedProfile()
+                    if profile then
+                        profile.borderSize = val
+                        TrySkin()
+                    end
                 end,
                 order = 1,
             },
@@ -218,13 +257,15 @@ function SetupOptions()
                 desc = "Crop the icon edges",
                 min = 0.01, max = 0.15, step = 0.005,
                 get = function() 
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return 0.08 end
-                    return CooldownManagerDBHandler.profile.iconZoom 
+                    local profile = GetCachedProfile()
+                    return profile and profile.iconZoom or 0.08
                 end,
                 set = function(_, val)
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
-                    CooldownManagerDBHandler.profile.iconZoom = val
-                    TrySkin()
+                    local profile = GetCachedProfile()
+                    if profile then
+                        profile.iconZoom = val
+                        TrySkin()
+                    end
                 end,
                 order = 2,
             },
@@ -234,19 +275,22 @@ function SetupOptions()
                 desc = "Choose the border color",
                 hasAlpha = false,
                 get = function()
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return 0, 0, 0 end
-                    local c = CooldownManagerDBHandler.profile.borderColor
+                    local profile = GetCachedProfile()
+                    if not profile then return 0, 0, 0 end
+                    local c = profile.borderColor
                     if not c then
                         c = { r = 0, g = 0, b = 0 } -- fallback default if missing
-                        CooldownManagerDBHandler.profile.borderColor = c -- fix it in DB too immediately
+                        profile.borderColor = c -- fix it in DB too immediately
                     end
                     return c.r, c.g, c.b
                 end,
                 
                 set = function(_, r, g, b)
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
-                    CooldownManagerDBHandler.profile.borderColor = { r = r, g = g, b = b }
-                    TrySkin()
+                    local profile = GetCachedProfile()
+                    if profile then
+                        profile.borderColor = { r = r, g = g, b = b }
+                        TrySkin()
+                    end
                 end,
                 order = 3,
             },
@@ -255,13 +299,15 @@ function SetupOptions()
                 name = "Show Buff Duration Swipe",
                 desc = "Toggle whether Blizzard icons use buff durations",
                 get = function() 
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return true end
-                    return CooldownManagerDBHandler.profile.useAuraForCooldown ~= false 
+                    local profile = GetCachedProfile()
+                    return not profile or profile.useAuraForCooldown ~= false 
                 end,
                 set = function(_, val)
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
-                    CooldownManagerDBHandler.profile.useAuraForCooldown = val
-                    TrySkin()
+                    local profile = GetCachedProfile()
+                    if profile then
+                        profile.useAuraForCooldown = val
+                        TrySkin()
+                    end
                 end,
                 order = 4,
             },
@@ -960,20 +1006,20 @@ for _, entry in ipairs(orderedViewers) do
                         if i then table.remove(db.spellPriority, i) end
 
                 
-                        C_Timer.After(0.05, function()
+                        C_Timer.After(CONFIG_CONSTANTS.UI_UPDATE_DELAY, function()
                             TrySkin()
                             SetupOptions()
-                            AceConfig:RegisterOptionsTable("CooldownManager", viewerTabs)
-                            AceConfigRegistry:NotifyChange("CooldownManager")
+                            AceConfig:RegisterOptionsTable(CONFIG_CONSTANTS.ADDON_NAME, viewerTabs)
+                            AceConfigRegistry:NotifyChange(CONFIG_CONSTANTS.ADDON_NAME)
                             viewerTabs.args.hideSpells.args[viewerName].args.hiddenList.args = generateHiddenSpellArgs(viewerName)
                 
-                            AceConfigDialog:Open("CooldownManager")
+                            AceConfigDialog:Open(CONFIG_CONSTANTS.ADDON_NAME)
                         end)
                     end
                 end,
                 
                 
-                width = "full",
+                width = CONFIG_CONSTANTS.FULL_WIDTH,
                 order = 1,
             },
             hiddenList = {
@@ -1028,21 +1074,21 @@ end
 
                             viewerTabs.args.customSpells.args[viewerName].args.spellList.args = generateCustomSpellArgs(viewerName)
                     
-                            C_Timer.After(0.05, function()
+                            C_Timer.After(CONFIG_CONSTANTS.UI_UPDATE_DELAY, function()
                                 TrySkin()
                                 SetupOptions()
-                                AceConfig:RegisterOptionsTable("CooldownManager", viewerTabs)
-                                AceConfigRegistry:NotifyChange("CooldownManager")
+                                AceConfig:RegisterOptionsTable(CONFIG_CONSTANTS.ADDON_NAME, viewerTabs)
+                                AceConfigRegistry:NotifyChange(CONFIG_CONSTANTS.ADDON_NAME)
 
                     
-                                AceConfigDialog:Open("CooldownManager")
+                                AceConfigDialog:Open(CONFIG_CONSTANTS.ADDON_NAME)
                             end)
                         end
                     end,
                     
                                  
                     
-                    width = "full",
+                    width = CONFIG_CONSTANTS.FULL_WIDTH,
                     order = 1,
                 },
                 spellList = {

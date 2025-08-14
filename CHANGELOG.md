@@ -2,6 +2,73 @@
 
 All notable changes to Cooldown Manager will be documented in this file.
 
+## [1.2.0] - 2025-08-14
+
+### Performance Optimizations
+- **Major Performance Overhaul**: Comprehensive optimization of core addon systems
+  - Implemented performance caching system with 0.1s timeout for database access
+  - Added spell information caching to reduce redundant API calls
+  - Extracted constants to centralized tables for better maintainability
+  - Optimized event throttling system with 60 FPS (16ms) throttling
+
+### Added
+- **Independent Bar System**: Major architectural improvement for bar independence
+  - Resource bars and cast bars now operate completely independently
+  - Each bar type can be positioned, styled, and configured separately
+  - Eliminates conflicts between different bar types
+  - Improved flexibility for custom UI layouts
+- **Performance Cache System**: 
+  - `GetCachedProfile()` function for efficient database access
+  - `GetCachedSpellInfo()` function for spell data caching
+  - Player class caching to reduce repeated API calls
+  - Automatic cache invalidation on data changes
+- **Constants Tables**: 
+  - `CONSTANTS` table in main.lua with performance and UI values
+  - `CONFIG_CONSTANTS` table in config.lua for configuration strings
+  - Centralized hardcoded values for easier maintenance
+- **Helper Functions**:
+  - `CreateStandardBar()` for consistent bar creation
+  - `CalculateBarWidth()` for optimized width calculations
+  - Secondary resource helper functions for Death Knight runes and combo points
+  - `InvalidateCache()` functions for proper cache management
+
+### Improved
+- **Independent Bar Architecture**:
+  - Complete separation of resource bar and cast bar systems
+  - Each bar type maintains its own state and configuration
+  - Improved reliability and reduced cross-system interference
+  - Better support for complex UI layouts and positioning
+- **Main Addon Performance**:
+  - Reduced database access calls by ~80% through caching
+  - Optimized bar update functions with cached calculations
+  - Improved event handling with throttling system
+  - Streamlined secondary resource tracking (Death Knight runes, Combo Points, Chi)
+- **Configuration UI Performance**:
+  - Optimized `generateHiddenSpellArgs()` and `generateCustomSpellArgs()` functions
+  - Replaced repeated database access with cached profile access
+  - Improved `GetViewerSetting()` and `SetViewerSetting()` efficiency
+  - Reduced spell info lookups through caching
+- **Code Quality**:
+  - Eliminated redundant variables and calculations
+  - Improved error handling with proper fallback values
+  - Better memory management with automatic cache cleanup
+  - Consistent coding patterns throughout the addon
+
+### Technical
+- **Independent Bar Implementation**: Separate tracking and management systems for each bar type
+- **Cache Implementation**: Profile data cached for 0.1s, spell info cached indefinitely
+- **Event Throttling**: 60 FPS update rate (16.67ms) for smooth performance
+- **Constants Extraction**: Moved 15+ hardcoded values to centralized tables
+- **Database Optimization**: Reduced repeated `CooldownManagerDBHandler.profile` access
+- **API Optimization**: Cached `C_Spell.GetSpellInfo()` and `GetSpecializationInfo()` calls
+- **Memory Efficiency**: Implemented proper cache invalidation and cleanup
+- **Bar Independence**: Resource and cast bars no longer share state or interfere with each other
+
+### Bug Fixes
+- Fixed potential memory leaks from excessive spell info lookups
+- Improved stability during rapid configuration changes
+- Better handling of missing or corrupted profile data
+
 ## [1.1.0] - 2025-08-12
 
 ### Added

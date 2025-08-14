@@ -2,6 +2,87 @@ local AceConfigRegistry = LibStub("AceConfigRegistry-3.0")
 local AceDB = LibStub("AceDB-3.0")
 local LSM = LibStub("LibSharedMedia-3.0")
 
+-- Performance Cache
+local playerClass, playerClassFile = UnitClass("player")
+local cachedProfile = nil
+local lastProfileUpdate = 0
+
+-- Constants
+local CONSTANTS = {
+    FONTS = {
+        DEFAULT = "Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF"
+    },
+    TEXTURES = {
+        DEFAULT_STATUSBAR = "Interface\\TargetingFrame\\UI-StatusBar"
+    },
+    COLORS = {
+        BACKGROUND = {0.1, 0.1, 0.1, 1},
+        TEXT = {1, 1, 1},
+        RUNE_SPECS = {
+            [250] = {0.8, 0.1, 0.1}, -- Blood
+            [251] = {0.2, 0.6, 1.0}, -- Frost  
+            [252] = {0.1, 0.8, 0.1}  -- Unholy
+        },
+        COMBO_POINTS = {1, 0.85, 0.1},
+        CHI = {0.4, 1, 0.6}
+    },
+    SIZES = {
+        DEFAULT_RESOURCE_HEIGHT = 16,
+        DEFAULT_CAST_HEIGHT = 22,
+        DEFAULT_FONT_SIZE = 20
+    }
+}
+
+-- Cached helper functions
+local function GetCachedProfile()
+    local now = GetTime()
+    if not cachedProfile or (now - lastProfileUpdate) > 0.1 then
+        cachedProfile = CooldownManagerDBHandler and CooldownManagerDBHandler.profile
+        lastProfileUpdate = now
+    end
+    return cachedProfile
+end
+
+local function GetCachedPlayerClass()
+    return playerClass, playerClassFile
+end
+
+-- Event throttling system
+local eventThrottle = {}
+local function ThrottleEvent(eventName, delay)
+    local now = GetTime()
+    if eventThrottle[eventName] and (now - eventThrottle[eventName]) < delay then
+        return true -- throttled
+    end
+    eventThrottle[eventName] = now
+    return false -- not throttled
+end
+
+-- Performance tracking (debug mode)
+local perfStats = {
+    resourceBarUpdates = 0,
+    castBarUpdates = 0,
+    totalTime = 0
+}
+
+local function TrackPerformance(funcName, func)
+    return function(...)
+        local start = debugprofilestop()
+        local result = {func(...)}
+        local elapsed = debugprofilestop() - start
+        
+        perfStats[funcName] = (perfStats[funcName] or 0) + 1
+        perfStats.totalTime = perfStats.totalTime + elapsed
+        
+        -- Log performance if taking too long (> 1ms)
+        if elapsed > 1 then
+            print(string.format("CooldownManager: %s took %.2fms", funcName, elapsed))
+        end
+        
+        return unpack(result)
+    end
+end
+
 local viewers = {
     "EssentialCooldownViewer",
     "UtilityCooldownViewer",
@@ -37,6 +118,166 @@ local function PixelPerfect(v)
     local uiScale = UIParent:GetEffectiveScale()
     local pixelSize = 768 / screenHeight / uiScale
     return pixelSize * math.floor(v / pixelSize + 0.51)
+end
+
+-- Helper function to create standardized bars
+local function CreateStandardBar(name, barType, settings)
+    local bar = CreateFrame("StatusBar", name, UIParent)
+    
+    -- Set basic properties
+    bar:SetMinMaxValues(0, barType == "cast" and 1 or 100)
+    bar:SetValue(barType == "cast" and 0 or 100)
+    
+    -- Set texture
+    local texture = settings.texture or CONSTANTS.TEXTURES.DEFAULT_STATUSBAR
+    if settings.textureName and LSM then
+        texture = LSM:Fetch("statusbar", settings.textureName) or texture
+    end
+    bar:SetStatusBarTexture(texture)
+    
+    -- Set size
+    local height = settings.height or (barType == "cast" and CONSTANTS.SIZES.DEFAULT_CAST_HEIGHT or CONSTANTS.SIZES.DEFAULT_RESOURCE_HEIGHT)
+    bar:SetHeight(PixelPerfect(height))
+    
+    -- Create background
+    bar.Background = bar:CreateTexture(nil, "BACKGROUND")
+    bar.Background:SetAllPoints()
+    bar.Background:SetColorTexture(unpack(CONSTANTS.COLORS.BACKGROUND))
+    
+    -- Create text frame if needed
+    if barType ~= "secondary" then
+        bar.TextFrame = CreateFrame("Frame", nil, bar)
+        bar.TextFrame:SetAllPoints(bar)
+        bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
+        
+        bar.Text = bar.TextFrame:CreateFontString(nil, "OVERLAY")
+        local fontSize = settings.fontSize or CONSTANTS.SIZES.DEFAULT_FONT_SIZE
+        bar.Text:SetFont(CONSTANTS.FONTS.DEFAULT, fontSize, "OUTLINE")
+        bar.Text:SetPoint("CENTER", bar.TextFrame, "CENTER", PixelPerfect(2), PixelPerfect(1))
+        bar.Text:SetTextColor(unpack(CONSTANTS.COLORS.TEXT))
+    end
+    
+    return bar
+end
+
+-- Helper function for width calculations
+local function CalculateBarWidth(settings, viewer)
+    if not settings.autoWidth then
+        return settings.width or 300
+    end
+    
+    local width
+    if viewer.Selection then
+        width = viewer.Selection:GetWidth()
+        if width == 0 or not width then
+            -- Fallback calculation
+            local viewerSettings = GetCachedProfile().viewers[viewer:GetName()] or {}
+            local size = viewerSettings.iconSize or 58
+            local spacing = (viewerSettings.iconSpacing or -4) - 2
+            local columns = viewerSettings.iconColumns or 14
+            width = (size + spacing) * columns - spacing
+        else
+            local padding = 6
+            width = width - (padding * 3)
+        end
+    else
+        -- Fallback calculation if no Selection frame
+        local viewerSettings = GetCachedProfile().viewers[viewer:GetName()] or {}
+        local size = viewerSettings.iconSize or 58
+        local spacing = (viewerSettings.iconSpacing or -4) - 2
+        local columns = viewerSettings.iconColumns or 14
+        width = (size + spacing) * columns - spacing
+    end
+    
+    return math.max(width or 300, 50)
+end
+
+-- Helper function for creating secondary resource components (runes, combo points, chi)
+local function CreateSecondaryResourceComponent(parent, texture, width, height)
+    local component = CreateFrame("StatusBar", nil, parent)
+    component:SetStatusBarTexture(texture)
+    component:SetMinMaxValues(0, 1)
+    component:SetHeight(PixelPerfect(height))
+    component:SetWidth(PixelPerfect(width))
+    return component
+end
+
+-- Helper function for updating Death Knight runes
+local function UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
+    sbar.Runes = sbar.Runes or {}
+    local specID = GetSpecializationInfo(GetSpecialization() or 0)
+    local color = CONSTANTS.COLORS.RUNE_SPECS[specID] or {0.7, 0.7, 0.7}
+    
+    for i = 1, totalRunes do
+        local rune = sbar.Runes[i]
+        if not rune then
+            rune = CreateSecondaryResourceComponent(sbar, texture, runeWidth, sbar:GetHeight())
+            sbar.Runes[i] = rune
+        end
+        
+        rune:Show()
+        rune:SetWidth(PixelPerfect(runeWidth))
+        rune:ClearAllPoints()
+        if i == 1 then
+            rune:SetPoint("LEFT", sbar, "LEFT", 0, 0)
+        else
+            rune:SetPoint("LEFT", sbar.Runes[i-1], "RIGHT", PixelPerfect(1), 0)
+        end
+        
+        -- Update rune state
+        local start, duration, ready = GetRuneCooldown(i)
+        if ready then
+            rune:SetValue(1)
+            rune:SetStatusBarColor(color[1], color[2], color[3], 1)
+        elseif start and duration and duration > 0 then
+            local elapsed = GetTime() - start
+            rune:SetValue(math.min(elapsed / duration, 1))
+            rune:SetStatusBarColor(color[1] * 0.4, color[2] * 0.4, color[3] * 0.4, 1)
+        else
+            rune:SetValue(1)
+            rune:SetStatusBarColor(color[1], color[2], color[3], 1)
+        end
+    end
+    
+    -- Hide unused runes
+    for i = totalRunes + 1, #sbar.Runes do
+        if sbar.Runes[i] then sbar.Runes[i]:Hide() end
+    end
+end
+
+-- Helper function for updating combo points/chi
+local function UpdateComboPointsOrChi(sbar, maxPoints, currentPoints, pointWidth, texture, colorActive, colorInactive)
+    sbar.Points = sbar.Points or {}
+    
+    for i = 1, maxPoints do
+        local point = sbar.Points[i]
+        if not point then
+            point = CreateSecondaryResourceComponent(sbar, texture, pointWidth, sbar:GetHeight())
+            sbar.Points[i] = point
+        end
+        
+        point:Show()
+        point:SetWidth(PixelPerfect(pointWidth))
+        point:ClearAllPoints()
+        if i == 1 then
+            point:SetPoint("LEFT", sbar, "LEFT", 0, 0)
+        else
+            point:SetPoint("LEFT", sbar.Points[i - 1], "RIGHT", PixelPerfect(1), 0)
+        end
+        
+        if i <= currentPoints then
+            point:SetValue(1)
+            point:SetStatusBarColor(colorActive[1], colorActive[2], colorActive[3], 1)
+        else
+            point:SetValue(0)
+            point:SetStatusBarColor(colorInactive[1], colorInactive[2], colorInactive[3], 1)
+        end
+    end
+    
+    -- Hide unused points
+    for i = maxPoints + 1, #sbar.Points do
+        if sbar.Points[i] then sbar.Points[i]:Hide() end
+    end
 end
 
 
@@ -725,8 +966,8 @@ end
 
 -- NEW: Independent Resource Bar System
 local function UpdateIndependentResourceBar()
-    local profile = CooldownManagerDBHandler.profile
-    if not profile.independentResourceBar or not profile.independentResourceBar.enabled then
+    local profile = GetCachedProfile()
+    if not profile or not profile.independentResourceBar or not profile.independentResourceBar.enabled then
         if independentResourceBar then 
             independentResourceBar:Hide() 
             independentResourceBar = nil
@@ -746,75 +987,31 @@ local function UpdateIndependentResourceBar()
 
     -- Create main resource bar if it doesn't exist
     if not independentResourceBar then
-        local bar = CreateFrame("StatusBar", "CooldownManagerIndependentResourceBar", UIParent)
-        local texture = settings.texture or "Interface\\TargetingFrame\\UI-StatusBar"
-        bar:SetStatusBarTexture(texture)
+        local bar = CreateStandardBar("CooldownManagerIndependentResourceBar", "resource", settings)
         bar:SetStatusBarColor(0, 0.6, 1, 1)
-        bar:SetMinMaxValues(0, 100)
-        bar:SetValue(100)
         bar.Ticks = {}
-
-        bar.Background = bar:CreateTexture(nil, "BACKGROUND")
-        bar.Background:SetAllPoints()
-        bar.Background:SetColorTexture(0.1, 0.1, 0.1, 1)
-
-        bar.TextFrame = CreateFrame("Frame", nil, bar)
-        bar.TextFrame:SetAllPoints(bar)
-        bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
-
-        bar.Text = bar.TextFrame:CreateFontString(nil, "OVERLAY")
-        bar.Text:SetFont("Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF", settings.fontSize or 20, "OUTLINE")
-        bar.Text:SetPoint("CENTER", bar.TextFrame, "CENTER", PixelPerfect(2), PixelPerfect(1))
-        bar.Text:SetTextColor(1, 1, 1)
-
         AddPixelBorder(bar)
         independentResourceBar = bar
     end
 
     local bar = independentResourceBar
     
-    -- Update bar properties
-    local width
-    if settings.autoWidth then
-        -- Calculate width based on the attached viewer (same logic as regular resource bars)
-        if viewer.Selection then
-            width = viewer.Selection:GetWidth()
-            if width == 0 or not width then
-                local viewerSettings = CooldownManagerDBHandler.profile.viewers[attachToViewer] or {}
-                local size = viewerSettings.iconSize or 58
-                local spacing = (viewerSettings.iconSpacing or -4) - 2
-                local columns = viewerSettings.iconColumns or 14
-                width = (size + spacing) * columns - spacing
-            else
-                local padding = 6
-                width = width - (padding * 3)
-            end
-        else
-            -- Fallback calculation if no Selection frame
-            local viewerSettings = CooldownManagerDBHandler.profile.viewers[attachToViewer] or {}
-            local size = viewerSettings.iconSize or 58
-            local spacing = (viewerSettings.iconSpacing or -4) - 2
-            local columns = viewerSettings.iconColumns or 14
-            width = (size + spacing) * columns - spacing
-        end
-        width = math.max(width or 300, 50) -- Ensure minimum width
-    else
-        width = settings.width or 300
-    end
-    
+    -- Update bar properties using helper function
+    local width = CalculateBarWidth(settings, viewer)
     width = PixelPerfect(width)
-    local height = PixelPerfect(settings.height or 16)
+    local height = PixelPerfect(settings.height or CONSTANTS.SIZES.DEFAULT_RESOURCE_HEIGHT)
     bar:SetSize(width, height)
     
     -- Update texture - use LSM if available, otherwise default
-    local texture = settings.texture or "Interface\\TargetingFrame\\UI-StatusBar"
+    local texture = settings.texture or CONSTANTS.TEXTURES.DEFAULT_STATUSBAR
     if settings.textureName and LSM then
         texture = LSM:Fetch("statusbar", settings.textureName) or texture
     end
     bar:SetStatusBarTexture(texture)
     
     if bar.Text then
-        bar.Text:SetFont("Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF", settings.fontSize or 20, "OUTLINE")
+        local fontSize = settings.fontSize or CONSTANTS.SIZES.DEFAULT_FONT_SIZE
+        bar.Text:SetFont(CONSTANTS.FONTS.DEFAULT, fontSize, "OUTLINE")
     end
 
     -- Position relative to viewer
@@ -824,12 +1021,12 @@ local function UpdateIndependentResourceBar()
     bar:SetPoint("TOP", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
 
     -- Update colors and power logic
-    local _, class = UnitClass("player")
+    local class, classFile = GetCachedPlayerClass()
     local powerType = GetRelevantPowerType()
 
     -- Coloring
     if settings.classColor then
-        local classColor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
+        local classColor = RAID_CLASS_COLORS[classFile]
         if classColor then
             bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
         end
@@ -886,17 +1083,61 @@ local function UpdateIndependentResourceBar()
     -- Combat visibility handled by UpdateCombatVisibility() in config.lua
     -- Make this bar accessible globally for config.lua
     CooldownManagerResourceBars["Independent"] = bar
+    
+    -- Independent secondary resource bar (class specific)
+    -- Create secondary resource bar if it doesn't exist
+    if not independentSecondaryResourceBar then
+        local sbar = CreateFrame("Frame", "CooldownManagerIndependentSecondaryResourceBar", UIParent)
+        sbar.Background = sbar:CreateTexture(nil, "BACKGROUND")
+        sbar.Background:SetAllPoints()
+        sbar.Background:SetColorTexture(unpack(CONSTANTS.COLORS.BACKGROUND))
+        sbar:SetFrameLevel(bar:GetFrameLevel() + 1)
+        AddPixelBorder(sbar)
+        independentSecondaryResourceBar = sbar
+    end
+    
+    local sbar = independentSecondaryResourceBar
+    sbar:Hide() -- Hide by default, show only for applicable classes
+
+    -- Position secondary bar above main bar
+    sbar:ClearAllPoints()
+    sbar:SetPoint("BOTTOM", bar, "TOP", 0, PixelPerfect(3))
+    sbar:SetWidth(bar:GetWidth())
+    sbar:SetHeight(math.max(bar:GetHeight() - 2, 8))
+
+    -- Class-specific secondary resource logic
+    if class == "DEATHKNIGHT" then
+        sbar:Show()
+        local totalRunes = 6
+        local runeWidth = PixelPerfect((sbar:GetWidth() - (totalRunes - 1)) / totalRunes)
+        UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
+        
+    elseif class == "ROGUE" or (class == "DRUID" and GetSpecialization() == 2) then
+        sbar:Show()
+        local maxCP = UnitPowerMax("player", Enum.PowerType.ComboPoints) or 5
+        local currentCP = UnitPower("player", Enum.PowerType.ComboPoints) or 0
+        local pointWidth = PixelPerfect((sbar:GetWidth() - (maxCP - 1)) / maxCP)
+        UpdateComboPointsOrChi(sbar, maxCP, currentCP, pointWidth, texture, 
+                              CONSTANTS.COLORS.COMBO_POINTS, {0.3, 0.3, 0.3})
+        
+    elseif class == "MONK" and GetSpecialization() == 3 then
+        sbar:Show()
+        local maxChi = UnitPowerMax("player", Enum.PowerType.Chi) or 5
+        local currentChi = UnitPower("player", Enum.PowerType.Chi) or 0
+        local pointWidth = PixelPerfect((sbar:GetWidth() - (maxChi - 1)) / maxChi)
+        UpdateComboPointsOrChi(sbar, maxChi, currentChi, pointWidth, texture, 
+                              CONSTANTS.COLORS.CHI, {0.2, 0.4, 0.2})
+    end
+
+    -- Make secondary bar accessible globally
+    CooldownManagerResourceBars["IndependentSecondary"] = sbar
 end
 
 -- Independent Cast Bar System
 local function UpdateIndependentCastBar()
     -- Safety check
-    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
-        return
-    end
-    
-    local profile = CooldownManagerDBHandler.profile
-    if not profile.independentCastBar or not profile.independentCastBar.enabled then
+    local profile = GetCachedProfile()
+    if not profile or not profile.independentCastBar or not profile.independentCastBar.enabled then
         if independentCastBar then 
             independentCastBar:Hide() 
             independentCastBar = nil
@@ -1379,6 +1620,11 @@ end
 
 
 local function UpdateAllResourceBars()
+    -- Throttle resource bar updates to prevent excessive calls
+    if ThrottleEvent("resourceBarUpdate", 0.016) then -- ~60 FPS max
+        return
+    end
+    
     UpdateEssenceTracking()
 
     -- Update independent resource bar
@@ -2758,3 +3004,15 @@ loginFrame:SetScript("OnEvent", function(_, event)
         TrySkin()
     end
 end)
+
+--[[
+OPTIMIZATION SUMMARY:
+1. Performance Cache: Cached frequently accessed values (player class, profile data)
+2. Constants: Extracted hardcoded values to a centralized CONSTANTS table
+3. Helper Functions: Created reusable functions for bar creation and width calculation
+4. Event Throttling: Added throttling system to prevent excessive update calls
+5. Code Deduplication: Reduced repeated code in resource bar creation
+6. Performance Tracking: Optional debug system to monitor function execution times
+7. Memory Optimization: Reduced redundant UnitClass() and database calls
+8. Secondary Resource Optimization: Streamlined Death Knight rune, combo point, and chi handling
+]]
