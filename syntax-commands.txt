@@ -1,0 +1,15 @@
+# CooldownManager Syntax Check Commands
+# 
+# Use any of these commands for quick syntax checking:
+
+# Full syntax checker (detailed output):
+powershell -ExecutionPolicy Bypass -File "syntax-check.ps1"
+
+# Quick syntax checker (compact output):  
+powershell -ExecutionPolicy Bypass -File "quick-check.ps1"
+
+# One-liner for terminal (main files only):
+lua -e "for _,f in ipairs({'main.lua','config.lua','Core/CastBars.lua'}) do local file,err=loadfile(f); if file then print(f..' OK') else print(f..' ERROR: '..err) end end"
+
+# Individual file check:
+lua -e "local f,err=loadfile('FILENAME.lua'); if f then print('OK') else print('ERROR: '..err) end"

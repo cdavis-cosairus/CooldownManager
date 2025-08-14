@@ -557,6 +557,10 @@ function SetupOptions()
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
                                     CooldownManagerDBHandler.profile.independentCastBar.enabled = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 1,
                             },
@@ -575,6 +579,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.attachToViewer = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 2,
                             },
@@ -589,6 +597,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.width = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 disabled = function()
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
@@ -606,6 +618,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.autoWidth = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 3.5,
                             },
@@ -620,6 +636,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.height = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 4,
                             },
@@ -634,6 +654,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.offsetX = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 5,
                             },
@@ -648,6 +672,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.offsetY = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 6,
                             },
@@ -662,6 +690,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.fontSize = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 7,
                             },
@@ -680,6 +712,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.textPosition = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 8,
                             },
@@ -697,6 +733,10 @@ function SetupOptions()
                                     CooldownManagerDBHandler.profile.independentCastBar.textureName = key
                                     local path = LSM:Fetch("statusbar", key)
                                     CooldownManagerDBHandler.profile.independentCastBar.texture = path
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 9,
                             },
@@ -710,6 +750,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.classColor = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 10,
                             },
@@ -725,6 +769,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, r, g, b)
                                     CooldownManagerDBHandler.profile.independentCastBar.customColor = { r = r, g = g, b = b }
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
                                 end,
                                 order = 11,
                             },
@@ -880,113 +928,15 @@ function SetupOptions()
             }
         }
     end
-    
--- Cast Bar
+
+    -- Hide Spells
     for _, entry in ipairs(orderedViewers) do
         local viewerName = entry.name
-        viewerTabs.args.castBars.args[viewerName] = {
-        type = "group",
-        name = viewerName,
-        order = entry.order,
-        args = {
-            showCastBar = {
-                type = "toggle",
-                name = "Show Cast Bar",
-                desc = "Toggle showing a cast bar for " .. viewerName,
-                get = function() return GetViewerSetting(viewerName, "showCastBar", false) end,
-                set = function(_, val) SetViewerSetting(viewerName, "showCastBar", val) end,
-                width = "full",
-                order = 1,
-            },
-            castBarHeight = {
-                type = "range",
-                name = "Cast Bar Height",
-                desc = "Height of the cast bar",
-                min = 4, max = 30, step = 1,
-                get = function() return GetViewerSetting(viewerName, "castBarHeight", 10) end,
-                set = function(_, val) SetViewerSetting(viewerName, "castBarHeight", val) end,
-                order = 2,
-            },
-            castBarOffsetY = {
-                type = "range",
-                name = "Cast Bar Offset Y",
-                desc = "Vertical offset for the cast bar",
-                min = -200, max = 200, step = 1,
-                get = function() return GetViewerSetting(viewerName, "castBarOffsetY", 5) end,
-                set = function(_, val) SetViewerSetting(viewerName, "castBarOffsetY", val) end,
-                order = 3,
-            },
-            castBarClassColor = {
-                type = "toggle",
-                name = "Use Class Color",
-                desc = "Color cast bar based on class color",
-                get = function() return GetViewerSetting(viewerName, "castBarClassColor", false) end,
-                set = function(_, val) SetViewerSetting(viewerName, "castBarClassColor", val) end,
-                order = 4,
-            },
-            castBarCustomColor = {
-                type = "color",
-                name = "Custom Cast Bar Color",
-                desc = "Pick a custom cast bar color",
-                hasAlpha = false,
-                get = function()
-                    local c = GetViewerSetting(viewerName, "castBarCustomColor", { r = 1, g = 0.7, b = 0 })
-                    return c.r, c.g, c.b
-                end,
-                set = function(_, r, g, b)
-                    SetViewerSetting(viewerName, "castBarCustomColor", { r = r, g = g, b = b })
-                end,
-                order = 5,
-            },
-            castBarFontSize = {
-                type = "range",
-                name = "Cast Bar Font Size",
-                desc = "Font size for text inside the cast bar",
-                min = 8, max = 24, step = 1,
-                get = function() return GetViewerSetting(viewerName, "castBarFontSize", 12) end,
-                set = function(_, val) SetViewerSetting(viewerName, "castBarFontSize", val) end,
-                order = 6,
-            },
-            castBarTexture = {
-                type = "select",
-                dialogControl = 'LSM30_Statusbar',
-                name = "Cast Bar Texture",
-                desc = "Choose the texture for the cast bar",
-                values = LSM:HashTable("statusbar"),
-                get = function()
-                    return GetViewerSetting(viewerName, "castBarTextureName", "Blizzard")
-                end,
-                set = function(_, key)
-                    SetViewerSetting(viewerName, "castBarTextureName", key)
-                    local path = LSM:Fetch("statusbar", key)
-                    SetViewerSetting(viewerName, "castBarTexture", path)
-                end,
-                order = 7,
-            },
-            hideCastBarOutOfCombat = {
-                type = "toggle",
-                name = "Hide Cast Bar Out of Combat",
-                desc = "Hide the cast bar when not in combat",
-                get = function() return GetViewerSetting(viewerName, "hideCastBarOutOfCombat", false) end,
-                set = function(_, val) 
-                    SetViewerSetting(viewerName, "hideCastBarOutOfCombat", val)
-                    UpdateCombatVisibility()
-                end,
-                order = 8,
-            },
-            
-        }
-    }
-end
-
--- Hide Spells
-for _, entry in ipairs(orderedViewers) do
-    local viewerName = entry.name
-    viewerTabs.args.hideSpells.args[viewerName] = {
-        type = "group",
-        name = viewerName,
-        order = entry.order,
-        args = {
+        viewerTabs.args.hideSpells.args[viewerName] = {
+            type = "group",
+            name = viewerName,
+            order = entry.order,
+            args = {
             spellIDInput = {
                 type = "input",
                 name = "Hide Spell ID",
@@ -1331,7 +1281,6 @@ for _, entry in ipairs(orderedViewers) do
     }
 end
 
-
 end
 
 local specWatcher = CreateFrame("Frame")
@@ -1379,31 +1328,6 @@ function UpdateCombatVisibility()
                 end
             else
                 resourceBar:Show() -- Always show if combat setting is disabled and resource bar is enabled
-            end
-        end
-        
-        -- Handle cast bar visibility (completely independent of main viewer)
-        local hideCastBarOutOfCombat = GetViewerSetting(viewerName, "hideCastBarOutOfCombat", false)
-        local showCastBar = GetViewerSetting(viewerName, "showCastBar", false)
-        
-        if CooldownManagerCastBars and CooldownManagerCastBars[viewerName] and showCastBar then
-            local castBar = CooldownManagerCastBars[viewerName]
-            if hideCastBarOutOfCombat then
-                if inCombat then
-                    -- Only show if there's an active cast or channel
-                    local spellName = UnitCastingInfo("player") or UnitChannelInfo("player")
-                    if spellName then
-                        castBar:Show()
-                    end
-                else
-                    castBar:Hide() -- Always hide out of combat when setting is enabled
-                end
-            else
-                -- Show if combat setting is disabled and cast bar is enabled
-                local spellName = UnitCastingInfo("player") or UnitChannelInfo("player")
-                if spellName then
-                    castBar:Show()
-                end
             end
         end
     end

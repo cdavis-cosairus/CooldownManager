@@ -31,6 +31,15 @@ Libs\LibDataBroker-1.1.lua
 Libs\LibSharedMedia-3.0\lib.xml
 Libs\TaintLess\TaintLess.xml
 
-# Core Files
+# Core Module Files (must be loaded before main.lua and config.lua)
+Core\Utils.lua
+Core\ResourceBars.lua
+Core\CastBars.lua
+Core\IconManager.lua
+Core\BuffViewer.lua
+Core\ViewerManager.lua
+Core\EventHandler.lua
+
+# Main Coordinator and Configuration
 main.lua
 config.lua

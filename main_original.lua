@@ -33,8 +33,8 @@ local CONSTANTS = {
     }
 }
 
--- Cached helper functions - make globally accessible for modules
-function GetCachedProfile()
+-- Cached helper functions
+local function GetCachedProfile()
     local now = GetTime()
     if not cachedProfile or (now - lastProfileUpdate) > 0.1 then
         cachedProfile = CooldownManagerDBHandler and CooldownManagerDBHandler.profile
@@ -61,6 +61,7 @@ end
 -- Performance tracking (debug mode)
 local perfStats = {
     resourceBarUpdates = 0,
+    castBarUpdates = 0,
     totalTime = 0
 }
 
@@ -112,8 +113,7 @@ local screenHeight = select(2, GetPhysicalScreenSize())
 local perfect = 768 / screenHeight
 local mult = perfect / UIParent:GetScale()
 
--- Make PixelPerfect function globally accessible for modules
-function PixelPerfect(v)
+local function PixelPerfect(v)
     local screenWidth, screenHeight = GetPhysicalScreenSize()
     local uiScale = UIParent:GetEffectiveScale()
     local pixelSize = 768 / screenHeight / uiScale
@@ -284,6 +284,156 @@ end
 
 
 
+local castData = {}
+
+-- Make these global so config.lua can access them
+CooldownManagerCastBars = {}
+local castBars = CooldownManagerCastBars
+
+-- Helper function to check if cast bar should show based on combat settings
+local function ShouldShowCastBar(viewerName)
+    if not CooldownManagerDBHandler.profile.viewers[viewerName] then return false end
+    local settings = CooldownManagerDBHandler.profile.viewers[viewerName]
+    
+    -- First check if cast bar is enabled at all
+    if not settings.showCastBar then return false end
+    
+    -- Check combat visibility setting
+    local hideCastBarOutOfCombat = settings.hideCastBarOutOfCombat
+    if hideCastBarOutOfCombat then
+        -- Only show if in combat
+        return InCombatLockdown()
+    end
+    
+    -- Show if combat setting is disabled
+    return true
+end
+
+function UpdateCastBar(viewer)
+    if not viewer then return end
+    
+
+    local name = viewer:GetName()
+    local settings = CooldownManagerDBHandler.profile.viewers[name]
+    if not settings then return end
+
+    if not ShouldShowCastBar(name) then
+        if castBars[name] then castBars[name]:Hide() end
+        castData[name] = nil
+        return
+    end
+
+    if not castBars[name] then
+        local bar = CreateFrame("StatusBar", nil, viewer)
+        bar:SetMinMaxValues(0, 1)
+        bar:SetValue(0)
+        bar:SetStatusBarTexture(settings.castBarTexture or "Interface\\TargetingFrame\\UI-StatusBar")
+        bar:SetHeight(PixelPerfect(settings.castBarHeight or 22))
+
+        bar.Background = bar:CreateTexture(nil, "BACKGROUND")
+        bar.Background:SetAllPoints()
+        bar.Background:SetColorTexture(0.1, 0.1, 0.1, 1)
+
+        bar.IconFrame = CreateFrame("Frame", nil, bar)
+        bar.Icon = bar.IconFrame:CreateTexture(nil, "ARTWORK")
+        bar.Icon:SetAllPoints()
+        bar.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+        bar.TextFrame = CreateFrame("Frame", nil, bar)
+        bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
+
+        bar.SpellName = bar.TextFrame:CreateFontString(nil, "OVERLAY")
+        bar.SpellName:SetJustifyH("LEFT")
+        bar.SpellName:SetJustifyV("MIDDLE")
+
+        bar.CastTime = bar.TextFrame:CreateFontString(nil, "OVERLAY")
+        bar.CastTime:SetJustifyH("RIGHT")
+        bar.CastTime:SetJustifyV("MIDDLE")
+
+        local oldIcon = bar.Icon
+        bar.Icon = nil
+        AddPixelBorder(bar)
+        bar.Icon = oldIcon
+
+        castBars[name] = bar
+    end
+
+    local bar = castBars[name]
+    bar:Hide()
+
+    bar:SetHeight(PixelPerfect(settings.castBarHeight or 22))
+
+    -- Texture update
+    bar:SetStatusBarTexture(settings.castBarTexture or "Interface\\TargetingFrame\\UI-StatusBar")
+
+    -- Position
+    bar:SetParent(viewer)
+    bar:SetScale(1)
+    bar:ClearAllPoints()
+    bar:SetPoint("BOTTOM", viewer, "TOP", PixelPerfect(0), PixelPerfect(settings.castBarOffsetY or 17))
+
+    -- Bar color
+    if settings.castBarClassColor then
+        local classColor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
+        if classColor then
+            bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
+        end
+    else
+        local c = settings.castBarCustomColor or { r = 1, g = 0.7, b = 0 }
+        bar:SetStatusBarColor(c.r, c.g, c.b, 1)
+    end
+
+    -- Width calculation (matching resource bar logic exactly)
+    local width
+    if viewer.Selection then
+        width = viewer.Selection:GetWidth()
+        local padding = 6
+        width = width - (padding * 3)
+    else
+        local size = settings.iconSize or 58
+        local spacing = (settings.iconSpacing or -4) - 3
+        local columns = settings.iconColumns or 14
+        width = (size + spacing) * columns - spacing
+    end
+    width = math.max(width, 50)
+
+    if bar._lastWidth ~= width then
+        bar._lastWidth = width
+        bar:SetWidth(PixelPerfect(width))
+        if bar.Background then
+            bar.Background:ClearAllPoints()
+            bar.Background:SetAllPoints(bar)
+        end
+    end
+
+    -- Reapply font size live
+    if bar.SpellName then
+        bar.SpellName:SetFont("Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF", settings.castBarFontSize or 16, "OUTLINE")
+        bar.SpellName:SetWordWrap(false)
+    end
+    if bar.CastTime then
+        bar.CastTime:SetFont("Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF", settings.castBarFontSize or 16, "OUTLINE")
+    end
+
+    -- Icon sizing based on bar height
+    local barHeight = bar:GetHeight() or PixelPerfect(settings.castBarHeight or 22)
+    if bar.IconFrame then
+        bar.IconFrame:SetPoint("LEFT", bar, "LEFT", PixelPerfect(0), 0)
+        bar.IconFrame:SetSize(barHeight, barHeight)
+    end
+
+    -- Text frame and positioning
+    bar.TextFrame:SetPoint("TOPLEFT", bar.IconFrame, "TOPRIGHT", PixelPerfect(4), 0)
+    bar.TextFrame:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", PixelPerfect(-4), 0)
+
+    bar.SpellName:SetPoint("LEFT", bar.TextFrame, "LEFT", 0, 0)
+    bar.SpellName:SetPoint("RIGHT", bar.TextFrame, "CENTER", -2, 0)
+
+    bar.CastTime:SetPoint("LEFT", bar.TextFrame, "CENTER", 2, 0)
+    bar.CastTime:SetPoint("RIGHT", bar.TextFrame, "RIGHT", 0, 0)
+end
+
+
 local secondaryPowerTypes = {
     ["EVOKER"] = Enum.PowerType.Essence,
     ["WARLOCK"] = Enum.PowerType.SoulShards,
@@ -421,6 +571,9 @@ local resourceBars = CooldownManagerResourceBars
 -- Single independent resource bar instead of per-viewer bars
 local independentResourceBar = nil
 local independentSecondaryResourceBar = nil
+
+-- Independent cast bar
+local independentCastBar = nil
 
 local secondaryResourceBars = secondaryResourceBars or {}
 
@@ -980,14 +1133,384 @@ local function UpdateIndependentResourceBar()
     CooldownManagerResourceBars["IndependentSecondary"] = sbar
 end
 
+-- Independent Cast Bar System
+local function UpdateIndependentCastBar()
+    -- Safety check
+    local profile = GetCachedProfile()
+    if not profile or not profile.independentCastBar or not profile.independentCastBar.enabled then
+        if independentCastBar then 
+            independentCastBar:Hide() 
+            independentCastBar = nil
+        end
+        return
+    end
+
+    local settings = profile.independentCastBar
+    local attachToViewer = settings.attachToViewer or "EssentialCooldownViewer"
+    local viewer = _G[attachToViewer]
+    
+    if not viewer then return end
+
+    -- Create cast bar if it doesn't exist
+    if not independentCastBar then
+        local bar = CreateFrame("StatusBar", "CooldownManagerIndependentCastBar", UIParent)
+        bar:SetMinMaxValues(0, 1)
+        bar:SetValue(0)
+        bar:SetStatusBarTexture(settings.texture or "Interface\\TargetingFrame\\UI-StatusBar")
+        bar:SetHeight(PixelPerfect(settings.height or 22))
+
+        bar.Background = bar:CreateTexture(nil, "BACKGROUND")
+        bar.Background:SetAllPoints()
+        bar.Background:SetColorTexture(0.1, 0.1, 0.1, 1)
+
+        bar.IconFrame = CreateFrame("Frame", nil, bar)
+        bar.Icon = bar.IconFrame:CreateTexture(nil, "ARTWORK")
+        bar.Icon:SetAllPoints()
+        bar.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+        bar.TextFrame = CreateFrame("Frame", nil, bar)
+        bar.TextFrame:SetFrameLevel(bar:GetFrameLevel() + 10)
+
+        bar.SpellName = bar.TextFrame:CreateFontString(nil, "OVERLAY")
+        bar.SpellName:SetJustifyH("LEFT")
+        bar.SpellName:SetJustifyV("MIDDLE")
+        bar.SpellName:SetWordWrap(false)
+
+        bar.CastTime = bar.TextFrame:CreateFontString(nil, "OVERLAY")
+        bar.CastTime:SetJustifyH("RIGHT")
+        bar.CastTime:SetJustifyV("MIDDLE")
+
+        -- Apply border safely
+        if AddPixelBorder then
+            local oldIcon = bar.Icon
+            bar.Icon = nil
+            AddPixelBorder(bar)
+            bar.Icon = oldIcon
+        end
+
+        independentCastBar = bar
+    end
+
+    local bar = independentCastBar
+    if not bar then return end
+    
+    -- Update bar properties
+    local width
+    if settings.autoWidth then
+        -- Calculate width based on the attached viewer (same logic as resource bars)
+        if viewer.Selection then
+            width = viewer.Selection:GetWidth()
+            if width == 0 or not width then
+                local viewerSettings = CooldownManagerDBHandler.profile.viewers[attachToViewer] or {}
+                local size = viewerSettings.iconSize or 58
+                local spacing = (viewerSettings.iconSpacing or -4) - 3
+                local columns = viewerSettings.iconColumns or 14
+                width = (size + spacing) * columns - spacing
+            else
+                local padding = 6
+                width = width - (padding * 3)
+            end
+        else
+            -- Fallback calculation if no Selection frame
+            local viewerSettings = CooldownManagerDBHandler.profile.viewers[attachToViewer] or {}
+            local size = viewerSettings.iconSize or 58
+            local spacing = (viewerSettings.iconSpacing or -4) - 3
+            local columns = viewerSettings.iconColumns or 14
+            width = (size + spacing) * columns - spacing
+        end
+        width = math.max(width or 300, 50) -- Ensure minimum width
+    else
+        width = settings.width or 300
+    end
+    
+    width = PixelPerfect(width)
+    local height = PixelPerfect(settings.height or 22)
+    bar:SetSize(width, height)
+    
+    -- Update texture - use LSM if available, otherwise default
+    local texture = settings.texture or "Interface\\TargetingFrame\\UI-StatusBar"
+    if settings.textureName and LSM then
+        texture = LSM:Fetch("statusbar", settings.textureName) or texture
+    end
+    bar:SetStatusBarTexture(texture)
+
+    -- Position relative to viewer
+    bar:ClearAllPoints()
+    local offsetX = settings.offsetX or 0
+    local offsetY = settings.offsetY or 17
+    bar:SetPoint("BOTTOM", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+
+    -- Bar color
+    if settings.classColor then
+        local classColor = RAID_CLASS_COLORS[select(2, UnitClass("player"))]
+        if classColor then
+            bar:SetStatusBarColor(classColor.r, classColor.g, classColor.b, 1)
+        end
+    else
+        local c = settings.customColor or { r = 1, g = 0.7, b = 0 }
+        bar:SetStatusBarColor(c.r, c.g, c.b, 1)
+    end
+
+    -- Font setup
+    local fontSize = settings.fontSize or 16
+    local fontPath = "Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF"
+    
+    if bar.SpellName then
+        bar.SpellName:SetFont(fontPath, fontSize, "OUTLINE")
+    end
+    if bar.CastTime then
+        bar.CastTime:SetFont(fontPath, fontSize, "OUTLINE")
+    end
+
+    -- Icon sizing based on bar height
+    local barHeight = bar:GetHeight() or height
+    if bar.IconFrame then
+        bar.IconFrame:SetPoint("LEFT", bar, "LEFT", PixelPerfect(0), 0)
+        bar.IconFrame:SetSize(barHeight, barHeight)
+    end
+
+    -- Text frame and positioning based on text position setting
+    local textPosition = settings.textPosition or "center"
+    bar.TextFrame:ClearAllPoints()
+    bar.TextFrame:SetPoint("TOPLEFT", bar.IconFrame, "TOPRIGHT", PixelPerfect(4), 0)
+    bar.TextFrame:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", PixelPerfect(-4), 0)
+
+    -- Clear existing points
+    bar.SpellName:ClearAllPoints()
+    bar.CastTime:ClearAllPoints()
+
+    if textPosition == "left" then
+        -- Both texts on the left side
+        bar.SpellName:SetPoint("LEFT", bar.TextFrame, "LEFT", 0, 0)
+        bar.SpellName:SetPoint("RIGHT", bar.TextFrame, "CENTER", -2, 0)
+        bar.CastTime:SetPoint("LEFT", bar.TextFrame, "CENTER", 2, 0)
+        bar.CastTime:SetPoint("RIGHT", bar.TextFrame, "RIGHT", 0, 0)
+        bar.SpellName:SetJustifyH("LEFT")
+        bar.CastTime:SetJustifyH("LEFT")
+    elseif textPosition == "right" then
+        -- Both texts on the right side
+        bar.SpellName:SetPoint("LEFT", bar.TextFrame, "LEFT", 0, 0)
+        bar.SpellName:SetPoint("RIGHT", bar.TextFrame, "CENTER", -2, 0)
+        bar.CastTime:SetPoint("LEFT", bar.TextFrame, "CENTER", 2, 0)
+        bar.CastTime:SetPoint("RIGHT", bar.TextFrame, "RIGHT", 0, 0)
+        bar.SpellName:SetJustifyH("RIGHT")
+        bar.CastTime:SetJustifyH("RIGHT")
+    else -- center (default)
+        -- Spell name on left, cast time on right (centered layout)
+        bar.SpellName:SetPoint("LEFT", bar.TextFrame, "LEFT", 0, 0)
+        bar.SpellName:SetPoint("RIGHT", bar.TextFrame, "CENTER", -2, 0)
+        bar.CastTime:SetPoint("LEFT", bar.TextFrame, "CENTER", 2, 0)
+        bar.CastTime:SetPoint("RIGHT", bar.TextFrame, "RIGHT", 0, 0)
+        bar.SpellName:SetJustifyH("LEFT")
+        bar.CastTime:SetJustifyH("RIGHT")
+    end
+
+    -- Visibility logic: show only when there's an active cast or channel
+    local spellName = UnitCastingInfo("player") or UnitChannelInfo("player")
+    if spellName then
+        if not bar:IsShown() then
+            bar:Show()
+            -- Set up OnUpdate for smooth progress updates when cast bar is active
+            bar:SetScript("OnUpdate", function(self)
+                -- Update cast bar info inline to avoid scope issues
+                local name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId
+                local isChanneling = false
+                
+                -- Check for casting first
+                name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo("player")
+                
+                -- If not casting, check for channeling
+                if not name then
+                    name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellId = UnitChannelInfo("player")
+                    isChanneling = true
+                end
+                
+                if name and startTime and endTime then
+                    -- Set spell icon
+                    if self.Icon and texture then
+                        self.Icon:SetTexture(texture)
+                    end
+                    
+                    -- Set spell name
+                    if self.SpellName then
+                        self.SpellName:SetText(name or "")
+                    end
+                    
+                    -- Calculate progress and remaining time
+                    local currentTime = GetTime() * 1000 -- Convert to milliseconds
+                    local duration = endTime - startTime
+                    local elapsed = currentTime - startTime
+                    local remaining = (endTime - currentTime) / 1000 -- Convert back to seconds
+                    
+                    -- Set progress bar
+                    if duration > 0 then
+                        local progress = elapsed / duration
+                        if isChanneling then
+                            -- For channeling, progress goes from 1 to 0
+                            progress = 1 - progress
+                        end
+                        self:SetValue(math.max(0, math.min(1, progress)))
+                    end
+                    
+                    -- Set cast time text
+                    if self.CastTime then
+                        if remaining > 0 then
+                            self.CastTime:SetText(string.format("%.1f", remaining))
+                        else
+                            self.CastTime:SetText("")
+                        end
+                    end
+                else
+                    -- Hide the bar if no casting/channeling
+                    if self:IsShown() then
+                        self:Hide()
+                        self:SetScript("OnUpdate", nil)
+                    end
+                end
+            end)
+        end
+    else
+        if bar:IsShown() then
+            bar:Hide()
+            -- Remove OnUpdate when not casting to save performance
+            bar:SetScript("OnUpdate", nil)
+        end
+    end
+
+    -- Make this bar accessible globally for config.lua and cast system
+    CooldownManagerCastBars["Independent"] = bar
+end
+
+-- Function to update independent cast bar with casting information
+local function UpdateIndependentCastBarInfo()
+    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
+        return
+    end
+    
+    if not CooldownManagerDBHandler.profile.independentCastBar or 
+       not CooldownManagerDBHandler.profile.independentCastBar.enabled then
+        return
+    end
+    
+    if not independentCastBar or not independentCastBar:IsShown() then
+        return
+    end
+    
+    local bar = independentCastBar
+    local name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId
+    local isChanneling = false
+    
+    -- Check for casting first
+    name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo("player")
+    
+    -- If not casting, check for channeling
+    if not name then
+        name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellId = UnitChannelInfo("player")
+        isChanneling = true
+    end
+    
+    if name and startTime and endTime then
+        -- Show and update the bar
+        if not bar:IsShown() then
+            bar:Show()
+        end
+        
+        -- Set spell icon
+        if bar.Icon and texture then
+            bar.Icon:SetTexture(texture)
+        end
+        
+        -- Set spell name
+        if bar.SpellName then
+            bar.SpellName:SetText(name or "")
+        end
+        
+        -- Calculate progress and remaining time
+        local currentTime = GetTime() * 1000 -- Convert to milliseconds
+        local duration = endTime - startTime
+        local elapsed = currentTime - startTime
+        local remaining = (endTime - currentTime) / 1000 -- Convert back to seconds
+        
+        -- Set progress bar
+        if duration > 0 then
+            local progress = elapsed / duration
+            if isChanneling then
+                -- For channeling, progress goes from 1 to 0
+                progress = 1 - progress
+            end
+            bar:SetValue(math.max(0, math.min(1, progress)))
+        end
+        
+        -- Set cast time text
+        if bar.CastTime then
+            if remaining > 0 then
+                bar.CastTime:SetText(string.format("%.1f", remaining))
+            else
+                bar.CastTime:SetText("")
+            end
+        end
+    else
+        -- Hide the bar if no casting/channeling
+        if bar:IsShown() then
+            bar:Hide()
+        end
+    end
+end
+
+-- Create event frame for independent cast bar updates
+local independentCastBarEventFrame
+local castBarUpdateTimer
+
+local function InitializeIndependentCastBarEvents()
+    if independentCastBarEventFrame then
+        return -- Already initialized
+    end
+    
+    independentCastBarEventFrame = CreateFrame("Frame")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_START")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_STOP")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_FAILED")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
+
+    independentCastBarEventFrame:SetScript("OnEvent", function(self, event, unit)
+        if unit == "player" then
+            -- Update independent cast bar directly
+            if independentCastBar and independentCastBar:IsShown() then
+                local name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId
+                local isChanneling = false
+                
+                -- Check for casting first
+                name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo("player")
+                
+                -- If not casting, check for channeling
+                if not name then
+                    name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellId = UnitChannelInfo("player")
+                    isChanneling = true
+                end
+                
+                if not name then
+                    -- No casting or channeling, hide the bar
+                    independentCastBar:Hide()
+                    independentCastBar:SetScript("OnUpdate", nil)
+                end
+            end
+        end
+    end)
+
+    -- Use OnUpdate for smooth progress updates instead of timer
+    -- This matches how the regular cast bars work
+end
+
 -- Initialize events after login
 local initFrame = CreateFrame("Frame")
 initFrame:RegisterEvent("ADDON_LOADED")
 initFrame:SetScript("OnEvent", function(self, event, addonName)
     if addonName == "CooldownManager" then
-        if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.InitializeEvents then
-            C_Timer.After(1, CooldownManager.CastBars.InitializeEvents)
-        end
+        C_Timer.After(1, InitializeIndependentCastBarEvents)
         self:UnregisterEvent("ADDON_LOADED")
     end
 end)
@@ -1108,9 +1631,7 @@ local function UpdateAllResourceBars()
     UpdateIndependentResourceBar()
     
     -- Update independent cast bar
-    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
-        CooldownManager.CastBars.UpdateIndependentCastBar()
-    end
+    UpdateIndependentCastBar()
 
     for _, viewerName in ipairs(viewers) do
         local viewer = _G[viewerName]
@@ -1956,9 +2477,14 @@ db.spellPriority = cleanedPriority -- Save cleaned list back
     if CooldownManagerDBHandler.profile.viewers[viewerName] then
         local settings = CooldownManagerDBHandler.profile.viewers[viewerName]
         
-        -- Create resource bar if enabled but doesn't exist  
+        -- Create resource bar if enabled but doesn't exist
         if settings.showResourceBar and not CooldownManagerResourceBars[viewerName] then
             UpdateResourceBar(viewer)
+        end
+        
+        -- Create cast bar if enabled but doesn't exist  
+        if settings.showCastBar and not CooldownManagerCastBars[viewerName] then
+            UpdateCastBar(viewer)
         end
     end
 end
@@ -2175,13 +2701,42 @@ end
 local eventFrame = CreateFrame("Frame")
 for _, ev in pairs({
     "UNIT_AURA", "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_CHARGES", "SPELL_ACTIVATION_OVERLAY_SHOW", "SPELL_ACTIVATION_OVERLAY_HIDE",
-    "PLAYER_ENTERING_WORLD", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT",
+    "PLAYER_ENTERING_WORLD", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_CHANNEL_START",
+    "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_FAILED",
+    "UNIT_SPELLCAST_EMPOWER_START", "UNIT_SPELLCAST_EMPOWER_STOP", "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT",
     "RUNE_POWER_UPDATE", "RUNE_TYPE_UPDATE",
-    "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED"
+    "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "UNIT_SPELLCAST_SUCCEEDED"
 }) do
     eventFrame:RegisterEvent(ev)
 end
 
+
+local function StartCastBarUpdate(bar)
+    bar:SetScript("OnUpdate", function(self)
+        local spellName, _, _, startTime, endTime = UnitCastingInfo("player")
+        local isChannel = false
+        if not spellName then
+            spellName, _, _, startTime, endTime = UnitChannelInfo("player")
+            isChannel = true
+        end
+
+        if not spellName or not startTime or not endTime then
+            self:SetScript("OnUpdate", nil)
+            self:SetMinMaxValues(0, 1)
+            self:SetValue(0)
+            self.CastTime:SetText("")
+            return
+        end
+
+        local now = GetTime() * 1000
+        local current = isChannel and (endTime - now) or (now - startTime)
+        local total = endTime - startTime
+
+        self:SetMinMaxValues(0, total)
+        self:SetValue(current)
+        self.CastTime:SetFormattedText("%.1f / %.1f", current / 1000, total / 1000)
+    end)
+end
 
 eventFrame:SetScript("OnEvent", function(_, event, unit)
     if event == "PLAYER_ENTERING_WORLD" then
@@ -2197,7 +2752,8 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
     or event == "PLAYER_TALENT_UPDATE"
     or event == "PLAYER_SPECIALIZATION_CHANGED"
     or event == "PLAYER_REGEN_ENABLED"
-    or event == "PLAYER_REGEN_DISABLED" then
+    or event == "PLAYER_REGEN_DISABLED"
+    or (event == "UNIT_SPELLCAST_SUCCEEDED" and unit == "player") then
         UpdateBuffIconVisibility()
         UpdateAllCustomIcons()
     end
@@ -2217,6 +2773,71 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
     end
 
     if unit == "player" then
+        for name, bar in pairs(castBars) do
+            local viewer = _G[name]
+            if viewer and bar then
+                local spellName, _, spellTexture, startTime, endTime = UnitCastingInfo("player")
+                local isChannel = false
+                if not spellName then
+                    spellName, _, spellTexture, startTime, endTime = UnitChannelInfo("player")
+                    isChannel = true
+                end
+    
+                if spellName and startTime and endTime then
+                    -- Only show cast bar if combat visibility allows it
+                    if ShouldShowCastBar(name) then
+                        bar:Show() -- Show cast bar frame
+                    end
+                    bar:SetScript("OnUpdate", nil) -- Stop any previous update to reset
+    
+                    bar.Background:SetAlpha(1)
+                    if bar.__borderParts then
+                        for _, part in ipairs(bar.__borderParts) do part:SetAlpha(1) end
+                    end
+    
+                    if bar.Icon and bar.IconFrame then
+                        bar.Icon:SetTexture(spellTexture)
+                        bar.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                        bar.Icon:SetAllPoints(bar.IconFrame)
+                        bar.Icon:Show()
+                    end
+    
+                    if bar.SpellName then
+                        bar.SpellName:SetText(spellName)
+                    end
+    
+                    StartCastBarUpdate(bar)
+                else
+                    bar:SetScript("OnUpdate", nil)
+                    bar:Hide() -- Hide cast bar frame completely
+    
+                    if bar.Background then
+                        bar.Background:SetAlpha(0)
+                    end
+    
+                    if bar.__borderParts then
+                        for _, part in ipairs(bar.__borderParts) do part:SetAlpha(0) end
+                    end
+    
+                    if bar.Icon then
+                        bar.Icon:SetTexture(nil)
+                        bar.Icon:Hide()
+                    end
+    
+                    if bar.SpellName then
+                        bar.SpellName:SetText("")
+                    end
+    
+                    if bar.CastTime then
+                        bar.CastTime:SetText("")
+                    end
+    
+                    bar:SetMinMaxValues(0, 1)
+                    bar:SetValue(0)
+                end
+            end
+        end
+    
         UpdateAllResourceBars()
         UpdateAllCustomIcons()
     end
@@ -2361,9 +2982,7 @@ loginFrame:SetScript("OnEvent", function(_, event)
         -- Hook profile changes
         local function RefreshConfig()
             TrySkin()
-            if SetupOptions then
-                SetupOptions()
-            end
+            SetupOptions()
             AceConfigRegistry:NotifyChange("CooldownBorders")
         end
         CooldownManagerDBHandler:RegisterCallback("OnProfileChanged", RefreshConfig)
@@ -2372,9 +2991,7 @@ loginFrame:SetScript("OnEvent", function(_, event)
 
         -- GUI setup + hooks
         C_Timer.After(0, function()
-            if SetupOptions then
-                SetupOptions()
-            end
+            SetupOptions()
             HookEditModeUpdates()
         end)
 
