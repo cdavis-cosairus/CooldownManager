@@ -4,6 +4,19 @@ All notable changes to Cooldown Manager will be documented in this file.
 
 ## [1.2.0] - 2025-08-14
 
+### Major Features
+- **Complete Cast Bar System**: Professional modular cast bar implementation
+  - **Modular Architecture**: Extracted cast bar system from monolithic main.lua into `Core/CastBars.lua`
+  - **Immediate Configuration Updates**: All 46 cast bar settings apply changes instantly without reload
+  - **Comprehensive Customization**: Full font selection, texture options, positioning, borders, and backgrounds
+  - **Professional UI Organization**: Settings organized into clear tabs (Settings/Appearance)
+  - **Improved Defaults**: Cast bar enabled by default with optimal settings for immediate use
+  - **Border & Background System**: Separate frame management with proper layering and customization
+  - **Initialization Fixes**: Cast bars now visible immediately upon login/reload
+  - **LibSharedMedia Integration**: Full support for custom fonts and textures
+  - **Auto-Width Support**: Intelligent bar sizing based on spell name length
+  - **Preview Mode**: Live preview of cast bar appearance while configuring
+
 ### Performance Optimizations
 - **Major Performance Overhaul**: Comprehensive optimization of core addon systems
   - Implemented performance caching system with 0.1s timeout for database access
@@ -33,6 +46,12 @@ All notable changes to Cooldown Manager will be documented in this file.
   - `InvalidateCache()` functions for proper cache management
 
 ### Improved
+- **Cast Bar System Architecture**:
+  - Complete modular separation from main addon file (reduced from 3019 lines)
+  - Professional event-driven architecture with proper namespace isolation
+  - Immediate update system ensuring all configuration changes apply instantly
+  - Clean border/background frame management with proper layering
+  - Robust initialization sequence for immediate cast bar visibility
 - **Independent Bar Architecture**:
   - Complete separation of resource bar and cast bar systems
   - Each bar type maintains its own state and configuration
@@ -55,6 +74,14 @@ All notable changes to Cooldown Manager will be documented in this file.
   - Consistent coding patterns throughout the addon
 
 ### Technical
+- **Cast Bar Modular Implementation**: 
+  - Complete extraction to `Core/CastBars.lua` with proper namespace (`CooldownManager.CastBars`)
+  - 46 configuration options with immediate update system via `UpdateIndependentCastBar()`
+  - Border cleanup system removing old `AddPixelBorder` remnants
+  - Professional Settings/Appearance tab organization in configuration UI
+  - LibSharedMedia-3.0 integration for fonts and textures
+  - Separate background/border frame management with proper stacking
+  - Integration with `UpdateCombatVisibility()` for proper initialization
 - **Independent Bar Implementation**: Separate tracking and management systems for each bar type
 - **Cache Implementation**: Profile data cached for 0.1s, spell info cached indefinitely
 - **Event Throttling**: 60 FPS update rate (16.67ms) for smooth performance
@@ -65,6 +92,9 @@ All notable changes to Cooldown Manager will be documented in this file.
 - **Bar Independence**: Resource and cast bars no longer share state or interfere with each other
 
 ### Bug Fixes
+- **Cast Bar System**: Fixed initialization delays causing bars to not appear until first cast
+- **Border Rendering**: Resolved black background artifacts and border rendering issues
+- **Configuration Consistency**: Eliminated orphaned code and ensured all settings work immediately
 - Fixed potential memory leaks from excessive spell info lookups
 - Improved stability during rapid configuration changes
 - Better handling of missing or corrupted profile data

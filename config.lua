@@ -537,29 +537,29 @@ function SetupOptions()
             },
             castBars = {
                 type = "group",
-                name = "Cast Bars",
+                name = "Cast Bar",
                 order = 31,
                 childGroups = "tab",
                 args = {
-                    independent = {
+                    settings = {
                         type = "group",
-                        name = "Independent Cast Bar",
+                        name = "Settings",
                         order = 1,
                         args = {
                             enabled = {
                                 type = "toggle",
-                                name = "Enable Independent Cast Bar",
+                                name = "Enable Cast Bar",
                                 desc = "Enable a single cast bar that can be attached to any viewer",
                                 get = function() 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.enabled or false 
+                                    return CooldownManagerDBHandler.profile.independentCastBar.enabled or true -- Default: enabled
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
                                     CooldownManagerDBHandler.profile.independentCastBar.enabled = val 
                                     -- Apply change immediately
                                     if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
-                                        CooldownManager.CastBars.CooldownManager.CastBars.UpdateIndependentCastBar()
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
                                     end
                                 end,
                                 order = 1,
@@ -585,6 +585,27 @@ function SetupOptions()
                                     end
                                 end,
                                 order = 2,
+                            },
+                            attachPosition = {
+                                type = "select",
+                                name = "Attach Position",
+                                desc = "Choose whether the cast bar appears above or below the viewer",
+                                values = {
+                                    top = "Above Viewer",
+                                    bottom = "Below Viewer"
+                                },
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.attachPosition or "top"
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.attachPosition = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 2.5,
                             },
                             width = {
                                 type = "range",
@@ -614,7 +635,7 @@ function SetupOptions()
                                 desc = "Automatically match the width of the attached viewer",
                                 get = function() 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.autoWidth or false 
+                                    return CooldownManagerDBHandler.profile.independentCastBar.autoWidth or true -- Default: auto width enabled
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.autoWidth = val 
@@ -668,7 +689,7 @@ function SetupOptions()
                                 min = -100, max = 100, step = 1,
                                 get = function() 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.offsetY or 17 
+                                    return CooldownManagerDBHandler.profile.independentCastBar.offsetY or 10 -- Default: 10px spacing
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.offsetY = val 
@@ -679,6 +700,47 @@ function SetupOptions()
                                 end,
                                 order = 6,
                             },
+                            showIcon = {
+                                type = "toggle",
+                                name = "Show Spell Icon",
+                                desc = "Display the spell icon on the cast bar",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.showIcon ~= false -- default to true
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.showIcon = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 7,
+                            },
+                            showPreview = {
+                                type = "toggle",
+                                name = "Show Preview",
+                                desc = "Keep the cast bar visible for positioning even when not casting",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.showPreview or true -- Default: preview enabled for setup
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.showPreview = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 8,
+                            },
+                        },
+                    },
+                    appearance = {
+                        type = "group",
+                        name = "Appearance",
+                        order = 2,
+                        args = {
                             fontSize = {
                                 type = "range",
                                 name = "Font Size",
@@ -695,29 +757,53 @@ function SetupOptions()
                                         CooldownManager.CastBars.UpdateIndependentCastBar()
                                     end
                                 end,
-                                order = 7,
+                                order = 1,
                             },
-                            textPosition = {
+                            font = {
                                 type = "select",
-                                name = "Text Position",
-                                desc = "Position of the text on the cast bar",
-                                values = {
-                                    left = "Left",
-                                    center = "Center",
-                                    right = "Right"
-                                },
-                                get = function() 
+                                dialogControl = 'LSM30_Font',
+                                name = "Font",
+                                desc = "Choose the font for the cast bar text",
+                                values = LSM:HashTable("font"),
+                                get = function()
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.textPosition or "center"
+                                    return CooldownManagerDBHandler.profile.independentCastBar.fontName or "Friz Quadrata TT"
                                 end,
-                                set = function(_, val) 
-                                    CooldownManagerDBHandler.profile.independentCastBar.textPosition = val 
+                                set = function(_, key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.fontName = key
+                                    local path = LSM:Fetch("font", key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.fontPath = path
                                     -- Apply change immediately
                                     if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
                                         CooldownManager.CastBars.UpdateIndependentCastBar()
                                     end
                                 end,
-                                order = 8,
+                                order = 2,
+                            },
+                            fontOutline = {
+                                type = "select",
+                                name = "Font Outline",
+                                desc = "Choose the outline style for the cast bar text",
+                                values = {
+                                    [""] = "None",
+                                    ["OUTLINE"] = "Outline",
+                                    ["THICKOUTLINE"] = "Thick Outline",
+                                    ["MONOCHROME"] = "Monochrome",
+                                    ["MONOCHROME,OUTLINE"] = "Monochrome + Outline",
+                                    ["MONOCHROME,THICKOUTLINE"] = "Monochrome + Thick Outline"
+                                },
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.fontOutline or "OUTLINE"
+                                end,
+                                set = function(_, val)
+                                    CooldownManagerDBHandler.profile.independentCastBar.fontOutline = val
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 3,
                             },
                             texture = {
                                 type = "select",
@@ -727,7 +813,7 @@ function SetupOptions()
                                 values = LSM:HashTable("statusbar"),
                                 get = function()
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.textureName or "Blizzard"
+                                    return CooldownManagerDBHandler.profile.independentCastBar.textureName or "Blizzard Raid Bar" -- Default: smoother texture
                                 end,
                                 set = function(_, key)
                                     CooldownManagerDBHandler.profile.independentCastBar.textureName = key
@@ -738,7 +824,7 @@ function SetupOptions()
                                         CooldownManager.CastBars.UpdateIndependentCastBar()
                                     end
                                 end,
-                                order = 9,
+                                order = 4,
                             },
                             classColor = {
                                 type = "toggle",
@@ -755,7 +841,7 @@ function SetupOptions()
                                         CooldownManager.CastBars.UpdateIndependentCastBar()
                                     end
                                 end,
-                                order = 10,
+                                order = 5,
                             },
                             customColor = {
                                 type = "color",
@@ -774,7 +860,149 @@ function SetupOptions()
                                         CooldownManager.CastBars.UpdateIndependentCastBar()
                                     end
                                 end,
+                                order = 6,
+                            },
+                            borderHeader = {
+                                type = "header",
+                                name = "Border Settings",
+                                order = 7,
+                            },
+                            borderTexture = {
+                                type = "select",
+                                dialogControl = 'LSM30_Border',
+                                name = "Border Texture",
+                                desc = "Choose the border texture for the cast bar",
+                                values = LSM:HashTable("border"),
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.borderTextureName or "Blizzard Tooltip"
+                                end,
+                                set = function(_, key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.borderTextureName = key
+                                    local path = LSM:Fetch("border", key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.borderTexture = path
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 8,
+                            },
+                            borderSize = {
+                                type = "range",
+                                name = "Border Size",
+                                desc = "Thickness of the border",
+                                min = 1, max = 32, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.borderSize or 4 -- Default: 4px border
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.borderSize = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 9,
+                            },
+                            borderColor = {
+                                type = "color",
+                                name = "Border Color",
+                                desc = "Color of the border",
+                                hasAlpha = true,
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    local c = CooldownManagerDBHandler.profile.independentCastBar.borderColor or { r = 1, g = 1, b = 1, a = 1 }
+                                    return c.r, c.g, c.b, c.a
+                                end,
+                                set = function(_, r, g, b, a)
+                                    CooldownManagerDBHandler.profile.independentCastBar.borderColor = { r = r, g = g, b = b, a = a }
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 10,
+                            },
+                            backgroundHeader = {
+                                type = "header",
+                                name = "Background Settings",
                                 order = 11,
+                            },
+                            showBackground = {
+                                type = "toggle",
+                                name = "Show Background",
+                                desc = "Enable background behind the cast bar",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.showBackground or false
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.showBackground = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 12,
+                            },
+                            backgroundTexture = {
+                                type = "select",
+                                dialogControl = 'LSM30_Statusbar',
+                                name = "Background Texture",
+                                desc = "Choose the texture for the background behind the cast bar",
+                                values = LSM:HashTable("statusbar"),
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.backgroundTextureName or "Blizzard"
+                                end,
+                                set = function(_, key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.backgroundTextureName = key
+                                    local path = LSM:Fetch("statusbar", key)
+                                    CooldownManagerDBHandler.profile.independentCastBar.backgroundTexture = path
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 13,
+                            },
+                            backgroundClassColor = {
+                                type = "toggle",
+                                name = "Use Class Color for Background",
+                                desc = "Color the background using your class color",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.backgroundClassColor or false 
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.backgroundClassColor = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 14,
+                            },
+                            backgroundColor = {
+                                type = "color",
+                                name = "Custom Background Color",
+                                desc = "Pick a custom background color if not using class color",
+                                hasAlpha = true,
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    local c = CooldownManagerDBHandler.profile.independentCastBar.backgroundColor or { r = 0, g = 0, b = 0, a = 0.8 }
+                                    return c.r, c.g, c.b, c.a
+                                end,
+                                set = function(_, r, g, b, a)
+                                    CooldownManagerDBHandler.profile.independentCastBar.backgroundColor = { r = r, g = g, b = b, a = a }
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 15,
                             },
                         },
                     },

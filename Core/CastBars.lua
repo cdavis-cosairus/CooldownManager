@@ -64,13 +64,8 @@ function CooldownManager.CastBars.UpdateIndependentCastBar()
         bar.CastTime:SetJustifyH("RIGHT")
         bar.CastTime:SetJustifyV("MIDDLE")
 
-        -- Apply border safely
-        if AddPixelBorder then
-            local oldIcon = bar.Icon
-            bar.Icon = nil
-            AddPixelBorder(bar)
-            bar.Icon = oldIcon
-        end
+        -- Note: Border will be handled by UpdateCastBarBorder function
+        -- This ensures our new border system works properly
 
         independentCastBar = bar
     end
@@ -124,7 +119,13 @@ function CooldownManager.CastBars.UpdateIndependentCastBar()
     bar:ClearAllPoints()
     local offsetX = settings.offsetX or 0
     local offsetY = settings.offsetY or 17
-    bar:SetPoint("BOTTOM", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+    local attachPosition = settings.attachPosition or "top"
+    
+    if attachPosition == "bottom" then
+        bar:SetPoint("TOP", viewer, "BOTTOM", PixelPerfect(offsetX), PixelPerfect(-offsetY))
+    else -- top (default)
+        bar:SetPoint("BOTTOM", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+    end
 
     -- Bar color
     if settings.classColor then
@@ -139,26 +140,42 @@ function CooldownManager.CastBars.UpdateIndependentCastBar()
 
     -- Font setup
     local fontSize = settings.fontSize or 16
-    local fontPath = "Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF"
+    local fontPath = settings.fontPath or "Interface\\AddOns\\CooldownManager\\Fonts\\FRIZQT__.TTF"
+    local fontOutline = settings.fontOutline or "OUTLINE"
+    
+    -- Use LSM if font name is specified
+    if settings.fontName and LSM then
+        fontPath = LSM:Fetch("font", settings.fontName) or fontPath
+    end
     
     if bar.SpellName then
-        bar.SpellName:SetFont(fontPath, fontSize, "OUTLINE")
+        bar.SpellName:SetFont(fontPath, fontSize, fontOutline)
     end
     if bar.CastTime then
-        bar.CastTime:SetFont(fontPath, fontSize, "OUTLINE")
+        bar.CastTime:SetFont(fontPath, fontSize, fontOutline)
     end
 
-    -- Icon sizing based on bar height
+    -- Icon sizing and visibility based on settings
     local barHeight = bar:GetHeight() or height
+    local showIcon = settings.showIcon ~= false -- default to true
+    
     if bar.IconFrame then
-        bar.IconFrame:SetPoint("LEFT", bar, "LEFT", PixelPerfect(0), 0)
-        bar.IconFrame:SetSize(barHeight, barHeight)
+        if showIcon then
+            bar.IconFrame:Show()
+            bar.IconFrame:SetPoint("LEFT", bar, "LEFT", PixelPerfect(0), 0)
+            bar.IconFrame:SetSize(barHeight, barHeight)
+        else
+            bar.IconFrame:Hide()
+        end
     end
 
-    -- Text frame and positioning based on text position setting
-    local textPosition = settings.textPosition or "center"
+    -- Text frame positioning based on icon visibility
     bar.TextFrame:ClearAllPoints()
-    bar.TextFrame:SetPoint("TOPLEFT", bar.IconFrame, "TOPRIGHT", PixelPerfect(4), 0)
+    if showIcon and bar.IconFrame then
+        bar.TextFrame:SetPoint("TOPLEFT", bar.IconFrame, "TOPRIGHT", PixelPerfect(4), 0)
+    else
+        bar.TextFrame:SetPoint("TOPLEFT", bar, "TOPLEFT", PixelPerfect(4), 0)
+    end
     bar.TextFrame:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", PixelPerfect(-4), 0)
 
     -- Clear existing points
@@ -191,22 +208,156 @@ function CooldownManager.CastBars.UpdateIndependentCastBar()
         bar.CastTime:SetJustifyH("RIGHT")
     end
 
-    -- Initial show/hide based on current cast state, but don't set up OnUpdate here
-    -- OnUpdate will be managed by events
+    -- Update border appearance
+    CooldownManager.CastBars.UpdateCastBarBorder(bar, settings)
+
+    -- Make sure the frame is properly positioned and visible for configuration
+    -- Check if user wants to preview the cast bar when not casting
+    local showPreview = settings.showPreview or false
+    
+    -- Initial show/hide based on current cast state
     local spellName = UnitCastingInfo("player") or UnitChannelInfo("player")
     if spellName then
+        -- Currently casting - show the bar
         if not bar:IsShown() then
             bar:Show()
         end
     else
-        if bar:IsShown() then
-            bar:Hide()
+        -- Not casting - show only if preview is enabled
+        if showPreview then
+            if not bar:IsShown() then
+                bar:Show()
+                -- Show a preview state
+                bar:SetValue(0.5) -- 50% for preview
+                if bar.SpellName then
+                    bar.SpellName:SetText("Cast Bar Preview")
+                end
+                if bar.CastTime then
+                    bar.CastTime:SetText("0.0s")
+                end
+            end
+        else
+            -- Hide when not casting and preview is disabled
+            if bar:IsShown() then
+                bar:Hide()
+            end
         end
     end
 
     -- Make this bar accessible globally for config.lua and cast system
     CooldownManagerCastBars = CooldownManagerCastBars or {}
     CooldownManagerCastBars["Independent"] = bar
+end
+
+-- Function to update cast bar border appearance
+function CooldownManager.CastBars.UpdateCastBarBorder(bar, settings)
+    if not bar then return end
+    
+    -- Clean up existing border and background frames
+    if bar.__borderFrame then
+        bar.__borderFrame:Hide()
+        bar.__borderFrame = nil
+    end
+    if bar.__backgroundFrame then
+        bar.__backgroundFrame:Hide()
+        bar.__backgroundFrame = nil
+    end
+    
+    -- Clean up old AddPixelBorder remnants if they exist
+    if bar.__borderParts then
+        for _, part in ipairs(bar.__borderParts) do
+            if part then
+                part:Hide()
+                part = nil
+            end
+        end
+        bar.__borderParts = nil
+    end
+    
+    -- Get border and background settings
+    local borderTexture = settings.borderTexture
+    local borderTextureName = settings.borderTextureName or "Blizzard Tooltip"
+    local borderSize = settings.borderSize or 8
+    local borderColor = settings.borderColor or { r = 1, g = 1, b = 1, a = 1 }
+    local showBackground = settings.showBackground or false
+    local backgroundColor = settings.backgroundColor or { r = 0, g = 0, b = 0, a = 0.8 }
+    local backgroundClassColor = settings.backgroundClassColor or false
+    local backgroundTexture = settings.backgroundTexture
+    local backgroundTextureName = settings.backgroundTextureName or "Blizzard"
+    
+    -- Use LSM to get textures if available
+    if borderTextureName and LSM then
+        borderTexture = LSM:Fetch("border", borderTextureName) or borderTexture
+    end
+    if backgroundTextureName and LSM then
+        backgroundTexture = LSM:Fetch("statusbar", backgroundTextureName) or backgroundTexture
+    end
+    
+    -- Get class color for background if enabled
+    if backgroundClassColor then
+        local _, class = UnitClass("player")
+        if class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
+            local classColor = RAID_CLASS_COLORS[class]
+            backgroundColor = { 
+                r = classColor.r, 
+                g = classColor.g, 
+                b = classColor.b, 
+                a = backgroundColor.a -- Keep the original alpha
+            }
+        end
+    end
+    
+    -- Hide the old background texture that was causing issues
+    if bar.Background then
+        bar.Background:Hide()
+    end
+    
+    -- Create background frame if background is enabled
+    if showBackground then
+        local backgroundFrame = CreateFrame("Frame", nil, bar)
+        backgroundFrame:SetAllPoints(bar)
+        backgroundFrame:SetFrameLevel(bar:GetFrameLevel() - 1) -- Behind the status bar
+        
+        -- Create background texture
+        local bgTexture = backgroundFrame:CreateTexture(nil, "BACKGROUND")
+        bgTexture:SetAllPoints(backgroundFrame)
+        
+        -- Apply texture or color
+        if backgroundTexture then
+            -- Use the selected statusbar texture
+            bgTexture:SetTexture(backgroundTexture)
+            -- Apply color tint to the texture
+            bgTexture:SetVertexColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a)
+        else
+            -- Fallback to solid color if no texture
+            bgTexture:SetColorTexture(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a)
+        end
+        
+        -- Store reference for cleanup
+        bar.__backgroundFrame = backgroundFrame
+    end
+    
+    -- Create border frame - always create this for the border
+    local borderFrame = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+    borderFrame:SetPoint("TOPLEFT", bar, "TOPLEFT", -borderSize, borderSize)
+    borderFrame:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", borderSize, -borderSize)
+    borderFrame:SetFrameLevel(bar:GetFrameLevel() + 1) -- In front of the status bar
+    
+    -- Set up backdrop with ONLY border, no background
+    borderFrame:SetBackdrop({
+        edgeFile = borderTexture or "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = borderSize,
+        insets = { left = 0, right = 0, top = 0, bottom = 0 }
+    })
+    
+    -- Set border color only - no background color
+    borderFrame:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b, borderColor.a)
+    
+    -- Make sure the border frame is visible
+    borderFrame:Show()
+    
+    -- Store reference for cleanup
+    bar.__borderFrame = borderFrame
 end
 
 -- Function to update cast bar with casting information (called by events and OnUpdate)
@@ -236,8 +387,12 @@ local function UpdateIndependentCastBarInfo()
             bar:SetScript("OnUpdate", UpdateIndependentCastBarInfo)
         end
         
-        -- Set spell icon
-        if bar.Icon and texture then
+        -- Set spell icon (only if enabled)
+        local profile = CooldownManagerDBHandler and CooldownManagerDBHandler.profile
+        local settings = profile and profile.independentCastBar or {}
+        local showIcon = settings.showIcon ~= false -- default to true
+        
+        if bar.Icon and texture and showIcon then
             bar.Icon:SetTexture(texture)
         end
         

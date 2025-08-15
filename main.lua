@@ -1256,6 +1256,11 @@ local function UpdateAllResourceBars()
             end
         end
     end
+    
+    -- Update combat visibility for all bars after they're created/updated
+    if UpdateCombatVisibility then
+        UpdateCombatVisibility()
+    end
 end
 
 local TRINKET_SLOTS = {13, 14}
