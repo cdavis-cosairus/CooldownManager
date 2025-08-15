@@ -776,6 +776,13 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
                     local pointWidth = PixelPerfect((self:GetWidth() - (maxChi - 1)) / maxChi)
                     UpdateComboPointsOrChi(self, maxChi, currentChi, pointWidth, texture, 
                         CooldownManager.CONSTANTS.COLORS.CHI, {0.2, 0.4, 0.2})
+                elseif class == "DEMONHUNTER" and GetSpecialization() == 2 then
+                    -- Vengeance Demon Hunter Soul Fragments
+                    local maxFragments = 5
+                    local fragmentAura = GetAuraDataBySpellID("player", 203981)
+                    local currentFragments = fragmentAura and fragmentAura.applications or 0
+                    local pointWidth = PixelPerfect((self:GetWidth() - (maxFragments - 1)) / maxFragments)
+                    UpdateComboPointsOrChi(self, maxFragments, currentFragments, pointWidth, texture, {0.7, 0.2, 1}, {0.3, 0.3, 0.3})
                 end
             end)
             sbar._secondaryUpdateHooked = true
@@ -801,6 +808,13 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
             local pointWidth = PixelPerfect((sbar:GetWidth() - (maxChi - 1)) / maxChi)
             UpdateComboPointsOrChi(sbar, maxChi, currentChi, pointWidth, texture, 
                 CooldownManager.CONSTANTS.COLORS.CHI, {0.2, 0.4, 0.2})
+        elseif class == "DEMONHUNTER" and GetSpecialization() == 2 then
+            sbar:Show()
+            local maxFragments = 5
+            local fragmentAura = GetAuraDataBySpellID("player", 203981)
+            local currentFragments = fragmentAura and fragmentAura.applications or 0
+            local pointWidth = PixelPerfect((sbar:GetWidth() - (maxFragments - 1)) / maxFragments)
+            UpdateComboPointsOrChi(sbar, maxFragments, currentFragments, pointWidth, texture, {0.7, 0.2, 1}, {0.3, 0.3, 0.3})
         end
     else
         sbar:SetScript("OnUpdate", nil)
