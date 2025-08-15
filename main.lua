@@ -812,6 +812,8 @@ end
 end
 
 -- NEW: Independent Resource Bar System
+-- DISABLED: Moved to modular Core/ResourceBars.lua - kept for reference
+--[[
 local function UpdateIndependentResourceBar()
     local profile = GetCachedProfile()
     if not profile or not profile.independentResourceBar or not profile.independentResourceBar.enabled then
@@ -979,6 +981,7 @@ local function UpdateIndependentResourceBar()
     -- Make secondary bar accessible globally
     CooldownManagerResourceBars["IndependentSecondary"] = sbar
 end
+--]]
 
 -- Initialize events after login
 local initFrame = CreateFrame("Frame")
@@ -1105,7 +1108,9 @@ local function UpdateAllResourceBars()
     UpdateEssenceTracking()
 
     -- Update independent resource bar
-    UpdateIndependentResourceBar()
+    if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+        CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+    end
     
     -- Update independent cast bar
     if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
@@ -1120,6 +1125,7 @@ local function UpdateAllResourceBars()
     end
 
     for name, bar in pairs(resourceBars) do
+
         if bar and bar:IsShown() then
             local powerType = GetRelevantPowerType()
             local current, max
@@ -1133,7 +1139,6 @@ local function UpdateAllResourceBars()
                 local aura = GetAuraDataBySpellID("player", 205473)
                 current = aura and aura.applications or 0
                 max = 5
-            
 
             elseif powerType == Enum.PowerType.Essence then
                 current = essenceData.current + (essenceData.partial or 0)
@@ -1143,7 +1148,8 @@ local function UpdateAllResourceBars()
                 max = UnitPowerMax("player", powerType)
             end
 
-            if max and max > 0 then
+            -- Only call SetMinMaxValues if bar is a StatusBar
+            if max and max > 0 and bar.SetMinMaxValues then
                 bar:SetMinMaxValues(0, max)
                 bar:SetValue(current)
 

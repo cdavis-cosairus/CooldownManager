@@ -351,6 +351,10 @@ function SetupOptions()
                                     CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
                                     CooldownManagerDBHandler.profile.independentResourceBar.enabled = val 
                                     UpdateCombatVisibility()
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                        CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                                    end
                                 end,
                                 order = 1,
                             },
@@ -369,6 +373,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentResourceBar.attachToViewer = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                        CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                                    end
                                 end,
                                 order = 2,
                             },
@@ -428,6 +436,10 @@ function SetupOptions()
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentResourceBar.height = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                        CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                                    end
                                 end,
                                 order = 5,
                             },
@@ -530,6 +542,23 @@ function SetupOptions()
                                     CooldownManagerDBHandler.profile.independentResourceBar.customColor = { r = r, g = g, b = b }
                                 end,
                                 order = 12,
+                            },
+                            showSecondaryResource = {
+                                type = "toggle",
+                                name = "Show Secondary Resource Bar",
+                                desc = "Enable secondary resource bar for classes that have them (Death Knight runes, Combo Points, Chi)",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                                    return CooldownManagerDBHandler.profile.independentResourceBar.showSecondaryResource ~= false -- Default: enabled
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentResourceBar.showSecondaryResource = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                        CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                                    end
+                                end,
+                                order = 13,
                             },
                         },
                     },

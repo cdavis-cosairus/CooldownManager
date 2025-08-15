@@ -86,84 +86,6 @@ local function GetEssenceRechargeTime()
     return 5 -- fallback 5 seconds
 end
 
--- Helper function for updating Death Knight runes
-local function UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
-    sbar.Runes = sbar.Runes or {}
-    local specID = GetSpecializationInfo(GetSpecialization() or 0)
-    local color = CooldownManager.CONSTANTS.COLORS.RUNE_SPECS[specID] or {0.7, 0.7, 0.7}
-    
-    for i = 1, totalRunes do
-        local rune = sbar.Runes[i]
-        if not rune then
-            rune = CooldownManager.CreateSecondaryResourceComponent(sbar, texture, runeWidth, sbar:GetHeight())
-            sbar.Runes[i] = rune
-        end
-        
-        rune:Show()
-        rune:SetWidth(PixelPerfect(runeWidth))
-        rune:ClearAllPoints()
-        if i == 1 then
-            rune:SetPoint("LEFT", sbar, "LEFT", 0, 0)
-        else
-            rune:SetPoint("LEFT", sbar.Runes[i-1], "RIGHT", PixelPerfect(1), 0)
-        end
-        
-        -- Update rune state
-        local start, duration, ready = GetRuneCooldown(i)
-        if ready then
-            rune:SetValue(1)
-            rune:SetStatusBarColor(color[1], color[2], color[3], 1)
-        elseif start and duration and duration > 0 then
-            local elapsed = GetTime() - start
-            rune:SetValue(math.min(elapsed / duration, 1))
-            rune:SetStatusBarColor(color[1] * 0.4, color[2] * 0.4, color[3] * 0.4, 1)
-        else
-            rune:SetValue(1)
-            rune:SetStatusBarColor(color[1], color[2], color[3], 1)
-        end
-    end
-    
-    -- Hide unused runes
-    for i = totalRunes + 1, #sbar.Runes do
-        if sbar.Runes[i] then sbar.Runes[i]:Hide() end
-    end
-end
-
--- Helper function for updating combo points/chi
-local function UpdateComboPointsOrChi(sbar, maxPoints, currentPoints, pointWidth, texture, colorActive, colorInactive)
-    sbar.Points = sbar.Points or {}
-    
-    for i = 1, maxPoints do
-        local point = sbar.Points[i]
-        if not point then
-            point = CooldownManager.CreateSecondaryResourceComponent(sbar, texture, pointWidth, sbar:GetHeight())
-            sbar.Points[i] = point
-        end
-        
-        point:Show()
-        point:SetWidth(PixelPerfect(pointWidth))
-        point:ClearAllPoints()
-        if i == 1 then
-            point:SetPoint("LEFT", sbar, "LEFT", 0, 0)
-        else
-            point:SetPoint("LEFT", sbar.Points[i - 1], "RIGHT", PixelPerfect(1), 0)
-        end
-        
-        if i <= currentPoints then
-            point:SetValue(1)
-            point:SetStatusBarColor(colorActive[1], colorActive[2], colorActive[3], 1)
-        else
-            point:SetValue(0)
-            point:SetStatusBarColor(colorInactive[1], colorInactive[2], colorInactive[3], 1)
-        end
-    end
-    
-    -- Hide unused points
-    for i = maxPoints + 1, #sbar.Points do
-        if sbar.Points[i] then sbar.Points[i]:Hide() end
-    end
-end
-
 -- Check if resource bar should show based on combat settings
 local function ShouldShowResourceBar(viewerName)
     if not CooldownManagerDBHandler.profile.viewers[viewerName] then return false end
@@ -224,6 +146,40 @@ local function UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
     local specID = GetSpecializationInfo(GetSpecialization() or 0)
     local color = CooldownManager.CONSTANTS.COLORS.RUNE_SPECS[specID] or {0.7, 0.7, 0.7}
     
+    -- Gather rune states and sort by ready status
+    local runeStates = {}
+    for i = 1, totalRunes do
+        local start, duration, ready = GetRuneCooldown(i)
+        local value, statusColor
+        
+        if ready then
+            value = 1
+            statusColor = { color[1], color[2], color[3], 1 }
+        elseif start and duration and duration > 0 then
+            local elapsed = GetTime() - start
+            value = math.min(elapsed / duration, 1)
+            statusColor = { color[1] * 0.4, color[2] * 0.4, color[3] * 0.4, 1 }
+        else
+            value = 1
+            statusColor = { color[1], color[2], color[3], 1 }
+        end
+        
+        table.insert(runeStates, {
+            ready = ready,
+            value = value,
+            color = statusColor
+        })
+    end
+    
+    -- Sort: ready runes first (left), then recharging (right)
+    table.sort(runeStates, function(a, b)
+        if a.ready ~= b.ready then
+            return a.ready -- ready runes first
+        end
+        return false -- maintain relative order for same state
+    end)
+    
+    -- Create and position runes with sorted states
     for i = 1, totalRunes do
         local rune = sbar.Runes[i]
         if not rune then
@@ -240,19 +196,10 @@ local function UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
             rune:SetPoint("LEFT", sbar.Runes[i-1], "RIGHT", PixelPerfect(1), 0)
         end
         
-        -- Update rune state
-        local start, duration, ready = GetRuneCooldown(i)
-        if ready then
-            rune:SetValue(1)
-            rune:SetStatusBarColor(color[1], color[2], color[3], 1)
-        elseif start and duration and duration > 0 then
-            local elapsed = GetTime() - start
-            rune:SetValue(math.min(elapsed / duration, 1))
-            rune:SetStatusBarColor(color[1] * 0.4, color[2] * 0.4, color[3] * 0.4, 1)
-        else
-            rune:SetValue(1)
-            rune:SetStatusBarColor(color[1], color[2], color[3], 1)
-        end
+        -- Apply sorted state to visual rune
+        local state = runeStates[i]
+        rune:SetValue(state.value)
+        rune:SetStatusBarColor(state.color[1], state.color[2], state.color[3], state.color[4])
     end
     
     -- Hide unused runes
@@ -780,6 +727,10 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
     -- Make this bar accessible globally for config.lua
     CooldownManagerResourceBars["Independent"] = bar
     
+    -- Secondary Resource Bar Integration (if enabled)
+    local _, class = UnitClass("player")
+    local showSecondaryResource = settings.showSecondaryResource ~= false -- Default: enabled
+    
     -- Independent secondary resource bar (class specific)
     if not independentSecondaryResourceBar then
         local sbar = CreateFrame("Frame", "CooldownManagerIndependentSecondaryResourceBar", UIParent)
@@ -794,34 +745,65 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
     local sbar = independentSecondaryResourceBar
     sbar:Hide() -- Hide by default, show only for applicable classes
 
-    -- Position secondary bar above main bar
-    sbar:ClearAllPoints()
-    sbar:SetPoint("BOTTOM", bar, "TOP", 0, PixelPerfect(3))
-    sbar:SetWidth(bar:GetWidth())
-    sbar:SetHeight(math.max(bar:GetHeight() - 2, 8))
+    -- Only show secondary resource if enabled and class supports it
+    if showSecondaryResource then
+        sbar:ClearAllPoints()
+        sbar:SetPoint("BOTTOM", bar, "TOP", 0, PixelPerfect(3))
+        sbar:SetWidth(bar:GetWidth())
+        sbar:SetHeight(math.max(bar:GetHeight() - 2, 8))
 
-    -- Class-specific secondary resource logic
-    if class == "DEATHKNIGHT" then
-        sbar:Show()
-        local totalRunes = 6
-        local runeWidth = PixelPerfect((sbar:GetWidth() - (totalRunes - 1)) / totalRunes)
-        UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
-        
-    elseif class == "ROGUE" or (class == "DRUID" and GetSpecialization() == 2) then
-        sbar:Show()
-        local maxCP = UnitPowerMax("player", Enum.PowerType.ComboPoints) or 5
-        local currentCP = UnitPower("player", Enum.PowerType.ComboPoints) or 0
-        local pointWidth = PixelPerfect((sbar:GetWidth() - (maxCP - 1)) / maxCP)
-        UpdateComboPointsOrChi(sbar, maxCP, currentCP, pointWidth, texture, 
-                              CooldownManager.CONSTANTS.COLORS.COMBO_POINTS, {0.3, 0.3, 0.3})
-        
-    elseif class == "MONK" and GetSpecialization() == 3 then
-        sbar:Show()
-        local maxChi = UnitPowerMax("player", Enum.PowerType.Chi) or 5
-        local currentChi = UnitPower("player", Enum.PowerType.Chi) or 0
-        local pointWidth = PixelPerfect((sbar:GetWidth() - (maxChi - 1)) / maxChi)
-        UpdateComboPointsOrChi(sbar, maxChi, currentChi, pointWidth, texture, 
-                              CooldownManager.CONSTANTS.COLORS.CHI, {0.2, 0.4, 0.2})
+        -- Dedicated OnUpdate for 120 FPS secondary resource bar updates
+        if not sbar._secondaryUpdateHooked then
+            local updateInterval = 0.008
+            local elapsed = 0
+            sbar:SetScript("OnUpdate", function(self, delta)
+                elapsed = elapsed + delta
+                if elapsed < updateInterval then return end
+                elapsed = 0
+                if class == "DEATHKNIGHT" then
+                    local totalRunes = 6
+                    local runeWidth = PixelPerfect((self:GetWidth() - (totalRunes - 1)) / totalRunes)
+                    UpdateDeathKnightRunes(self, totalRunes, runeWidth, texture)
+                elseif class == "ROGUE" or (class == "DRUID" and GetSpecialization() == 2) then
+                    local maxCP = UnitPowerMax("player", Enum.PowerType.ComboPoints) or 5
+                    local currentCP = UnitPower("player", Enum.PowerType.ComboPoints) or 0
+                    local pointWidth = PixelPerfect((self:GetWidth() - (maxCP - 1)) / maxCP)
+                    UpdateComboPointsOrChi(self, maxCP, currentCP, pointWidth, texture, 
+                        CooldownManager.CONSTANTS.COLORS.COMBO_POINTS, {0.3, 0.3, 0.3})
+                elseif class == "MONK" and GetSpecialization() == 3 then
+                    local maxChi = UnitPowerMax("player", Enum.PowerType.Chi) or 5
+                    local currentChi = UnitPower("player", Enum.PowerType.Chi) or 0
+                    local pointWidth = PixelPerfect((self:GetWidth() - (maxChi - 1)) / maxChi)
+                    UpdateComboPointsOrChi(self, maxChi, currentChi, pointWidth, texture, 
+                        CooldownManager.CONSTANTS.COLORS.CHI, {0.2, 0.4, 0.2})
+                end
+            end)
+            sbar._secondaryUpdateHooked = true
+        end
+
+        -- Initial update (so it appears instantly)
+        if class == "DEATHKNIGHT" then
+            sbar:Show()
+            local totalRunes = 6
+            local runeWidth = PixelPerfect((sbar:GetWidth() - (totalRunes - 1)) / totalRunes)
+            UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
+        elseif class == "ROGUE" or (class == "DRUID" and GetSpecialization() == 2) then
+            sbar:Show()
+            local maxCP = UnitPowerMax("player", Enum.PowerType.ComboPoints) or 5
+            local currentCP = UnitPower("player", Enum.PowerType.ComboPoints) or 0
+            local pointWidth = PixelPerfect((sbar:GetWidth() - (maxCP - 1)) / maxCP)
+            UpdateComboPointsOrChi(sbar, maxCP, currentCP, pointWidth, texture, 
+                CooldownManager.CONSTANTS.COLORS.COMBO_POINTS, {0.3, 0.3, 0.3})
+        elseif class == "MONK" and GetSpecialization() == 3 then
+            sbar:Show()
+            local maxChi = UnitPowerMax("player", Enum.PowerType.Chi) or 5
+            local currentChi = UnitPower("player", Enum.PowerType.Chi) or 0
+            local pointWidth = PixelPerfect((sbar:GetWidth() - (maxChi - 1)) / maxChi)
+            UpdateComboPointsOrChi(sbar, maxChi, currentChi, pointWidth, texture, 
+                CooldownManager.CONSTANTS.COLORS.CHI, {0.2, 0.4, 0.2})
+        end
+    else
+        sbar:SetScript("OnUpdate", nil)
     end
 
     -- Make secondary bar accessible globally
@@ -935,7 +917,7 @@ end
 -- Main update function for all resource bars
 function CooldownManager.ResourceBars.UpdateAllResourceBars()
     -- Throttle resource bar updates to prevent excessive calls
-    if CooldownManager.ThrottleEvent("resourceBarUpdate", 0.016) then -- ~60 FPS max
+    if CooldownManager.ThrottleEvent("resourceBarUpdate", 0.008) then -- ~120 FPS max
         return
     end
     
@@ -1050,9 +1032,10 @@ function CooldownManager.ResourceBars.InitializeEssenceTracking()
     essenceFrame:SetScript("OnUpdate", function(self, elapsed)
         if not essenceData.active then return end
 
-        throttle = throttle + elapsed
-        if throttle < 0.05 then return end -- only run every ~20fps max
-        throttle = 0
+    throttle = throttle + elapsed
+    -- Remove throttle for maximum smoothness (update every frame)
+    -- if throttle < 0.016 then return end -- ~60 FPS max (matching original)
+    throttle = 0
 
         local now = GetTime()
         local elapsedSinceLast = now - essenceData.lastUpdate
