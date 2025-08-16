@@ -462,7 +462,29 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
     
     if bar.Text then
         local fontSize = settings.fontSize or CooldownManager.CONSTANTS.SIZES.DEFAULT_FONT_SIZE
-        bar.Text:SetFont(CooldownManager.CONSTANTS.FONTS.DEFAULT, fontSize, "OUTLINE")
+        
+        -- Apply custom font selection
+        local fontPath = CooldownManager.CONSTANTS.FONTS.DEFAULT
+        if settings.font and LSM then
+            fontPath = LSM:Fetch("font", settings.font) or fontPath
+        elseif settings.font then
+            fontPath = settings.font
+        end
+        
+        bar.Text:SetFont(fontPath, fontSize, "OUTLINE")
+        
+        -- Apply text alignment
+        local textAlign = settings.textAlign or "CENTER"
+        bar.Text:SetJustifyH(textAlign)
+        
+        -- Apply text positioning offsets
+        local textOffsetX = settings.textOffsetX or 0
+        local textOffsetY = settings.textOffsetY or 0
+        
+        -- Reposition the text with custom offsets
+        bar.Text:ClearAllPoints()
+        bar.Text:SetPoint("CENTER", bar.TextFrame, "CENTER", 
+                         PixelPerfect(2 + textOffsetX), PixelPerfect(1 + textOffsetY))
     end
 
     -- Position relative to viewer if available, otherwise independently
@@ -530,9 +552,8 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
         bar:SetMinMaxValues(0, max)
         bar:SetValue(current)
         if bar.Text then
-            -- Hide text if value is 0, or if showing Soul Fragments for non-Demon Hunter
-            local shouldHideText = (current == 0) or 
-                                  (powerType == 203981 and class ~= "DEMONHUNTER") -- Soul Fragments for non-DH
+            -- Only hide text for Soul Fragments when shown to non-Demon Hunter
+            local shouldHideText = (powerType == 203981 and class ~= "DEMONHUNTER") -- Soul Fragments for non-DH
             
             if shouldHideText then
                 bar.Text:SetText("")
@@ -620,10 +641,9 @@ function CooldownManager.ResourceBars.InitializeEssenceTracking()
                 local value = essenceData.current + (essenceData.partial or 0)
                 independentResourceBar:SetValue(value)
                 if independentResourceBar.Text then
-                    -- Hide text if value is 0 or if showing Soul Fragments for non-Demon Hunter
+                    -- Only hide text for Soul Fragments when shown to non-Demon Hunter
                     local _, class = UnitClass("player")
-                    local shouldHideText = (value == 0) or 
-                                          (powerType == 203981 and class ~= "DEMONHUNTER") -- Soul Fragments for non-DH
+                    local shouldHideText = (powerType == 203981 and class ~= "DEMONHUNTER") -- Soul Fragments for non-DH
                     
                     if shouldHideText then
                         independentResourceBar.Text:SetText("")

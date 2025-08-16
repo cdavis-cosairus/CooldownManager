@@ -529,6 +529,101 @@ function SetupOptions()
                         end,
                         order = 12,
                     },
+                    font = {
+                        type = "select",
+                        dialogControl = "LSM30_Font",
+                        name = "Font",
+                        desc = "Font used for the text on the resource bar",
+                        values = AceGUIWidgetLSMlists.font,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.font or "Fonts\\FRIZQT__.TTF"
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentResourceBar.font = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 13,
+                    },
+                    fontSize = {
+                        type = "range",
+                        name = "Font Size",
+                        desc = "Size of the text on the resource bar",
+                        min = 8, max = 32, step = 1,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.fontSize or 14
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentResourceBar.fontSize = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 14,
+                    },
+                    textAlign = {
+                        type = "select",
+                        name = "Text Alignment",
+                        desc = "Horizontal alignment of the text",
+                        values = {
+                            ["LEFT"] = "Left",
+                            ["CENTER"] = "Center", 
+                            ["RIGHT"] = "Right",
+                        },
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.textAlign or "CENTER"
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentResourceBar.textAlign = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 15,
+                    },
+                    textOffsetX = {
+                        type = "range",
+                        name = "Text X Offset",
+                        desc = "Horizontal position adjustment for the text",
+                        min = -50, max = 50, step = 1,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.textOffsetX or 0
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentResourceBar.textOffsetX = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 16,
+                    },
+                    textOffsetY = {
+                        type = "range",
+                        name = "Text Y Offset", 
+                        desc = "Vertical position adjustment for the text",
+                        min = -20, max = 20, step = 1,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.textOffsetY or 0
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentResourceBar.textOffsetY = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 17,
+                    },
                 },
             },
             
@@ -706,6 +801,101 @@ function SetupOptions()
                             end
                         end,
                         order = 8,
+                    },
+                    font = {
+                        type = "select",
+                        dialogControl = "LSM30_Font",
+                        name = "Font",
+                        desc = "Font used for the text on the secondary resource bar",
+                        values = AceGUIWidgetLSMlists.font,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.font or "Fonts\\FRIZQT__.TTF"
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.font = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 9,
+                    },
+                    fontSize = {
+                        type = "range",
+                        name = "Font Size",
+                        desc = "Size of the text on the secondary resource bar",
+                        min = 8, max = 32, step = 1,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.fontSize or 14
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.fontSize = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 10,
+                    },
+                    textAlign = {
+                        type = "select",
+                        name = "Text Alignment",
+                        desc = "Horizontal alignment of the text",
+                        values = {
+                            ["LEFT"] = "Left",
+                            ["CENTER"] = "Center", 
+                            ["RIGHT"] = "Right",
+                        },
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textAlign or "CENTER"
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textAlign = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 11,
+                    },
+                    textOffsetX = {
+                        type = "range",
+                        name = "Text X Offset",
+                        desc = "Horizontal position adjustment for the text",
+                        min = -50, max = 50, step = 1,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textOffsetX or 0
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textOffsetX = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 12,
+                    },
+                    textOffsetY = {
+                        type = "range",
+                        name = "Text Y Offset", 
+                        desc = "Vertical position adjustment for the text",
+                        min = -20, max = 20, step = 1,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textOffsetY or 0
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textOffsetY = val
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 13,
                     },
                 },
             },
