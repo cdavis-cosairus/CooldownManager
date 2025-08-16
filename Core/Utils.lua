@@ -285,9 +285,39 @@ function AddPixelBorder(frame)
     end
 end
 
+-- Cache for spell class compatibility to avoid repeated lookups
+local CLASS_SPELL_CACHE = {}
+
+-- Check if a spell is usable by the player's class
+local function IsSpellUsableByPlayerClass(spellID)
+    if CLASS_SPELL_CACHE[spellID] ~= nil then
+        return CLASS_SPELL_CACHE[spellID]
+    end
+
+    local name = C_Spell.GetSpellInfo(spellID)
+    if not name then return false end
+
+    for tabIndex = 1, C_SpellBook.GetNumSpellBookSkillLines() do
+        local _, _, offset, numSpells = C_SpellBook.GetSpellBookSkillLineInfo(tabIndex)
+        if offset and numSpells then
+            for spellIndex = 1, numSpells do
+                local sID = select(2, GetSpellBookItemInfo(offset + spellIndex, BOOKTYPE_SPELL))
+                if sID == spellID then
+                    CLASS_SPELL_CACHE[spellID] = true
+                    return true
+                end
+            end
+        end
+    end
+
+    CLASS_SPELL_CACHE[spellID] = false
+    return false
+end
+
 -- Expose essential functions globally for backward compatibility
 PixelPerfect = PixelPerfect
 AddPixelBorder = AddPixelBorder
 GetAuraDataBySpellID = GetAuraDataBySpellID
 tIndexOf = tIndexOf
 InEditMode = InEditMode
+IsSpellUsableByPlayerClass = IsSpellUsableByPlayerClass

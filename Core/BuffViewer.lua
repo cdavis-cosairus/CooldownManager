@@ -104,3 +104,7 @@ end
 -- Expose functions for global access
 CooldownManager.BuffViewer.UpdateBuffIconVisibility = UpdateBuffIconVisibility
 CooldownManager.BuffViewer.HookBuffViewerLayout = HookBuffViewerLayout
+
+-- Global exposures for backward compatibility
+HookBuffViewerLayout = HookBuffViewerLayout
+UpdateBuffIconVisibility = UpdateBuffIconVisibility

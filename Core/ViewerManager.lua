@@ -141,6 +141,9 @@ function CooldownManager.ViewerManager.Initialize()
         end
         wasVisible = nowVisible
     end)
+    
+    -- Initialize edit mode hooks
+    CooldownManager.ViewerManager.HookEditModeUpdates()
 end
 
 -- Hook edit mode updates
@@ -175,3 +178,6 @@ end
 
 -- Expose functions globally
 TrySkin = CooldownManager.ViewerManager.TrySkin -- Keep global for compatibility
+ProtectViewer = CooldownManager.ViewerManager.ProtectViewer -- Keep global for compatibility
+SkinViewer = CooldownManager.ViewerManager.SkinViewer -- Keep global for compatibility
+HookEditModeUpdates = CooldownManager.ViewerManager.HookEditModeUpdates -- Keep global for compatibility
