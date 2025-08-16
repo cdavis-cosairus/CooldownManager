@@ -145,6 +145,16 @@ loginFrame:SetScript("OnEvent", function(_, event)
                     resourceBarTexture = "Interface\\TargetingFrame\\UI-StatusBar",
                     resourceBarFontSize = 20,
                 },
+                independentCastBar = {
+                    enabled = true,
+                    attachToViewer = "EssentialCooldownViewer",
+                    attachPosition = "top",
+                    width = 300,
+                    autoWidth = true,
+                    height = 24,
+                    showIcon = true,
+                    showPreview = true,
+                },
             }
         }, true)
 

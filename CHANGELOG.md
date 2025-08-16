@@ -2,102 +2,95 @@
 
 All notable changes to Cooldown Manager will be documented in this file.
 
+## [1.3.0] - 2025-08-16
+
+### Major Code Deduplication & Architecture Overhaul
+- **Comprehensive Code Deduplication**: Eliminated over 1,500 lines of duplicate code
+  - Reduced main.lua from ~1,600+ lines to 173 lines (89% reduction)
+  - Systematic extraction of functionality into specialized Core modules
+  - Enhanced code organization with clear separation of concerns
+
+### New Core Modules
+- **Core/IconManager.lua**: Complete icon management system
+  - `LayoutCooldownIcons()`, `UpdateAllCustomIcons()`, `CreateCustomIcon()`
+  - Centralized all icon layout, creation, and update functionality
+- **Core/ViewerManager.lua**: Comprehensive viewer lifecycle management
+  - `TrySkin()`, `ProtectViewer()`, `SkinViewer()`, `HookEditModeUpdates()`, `HandleTrinketChange()`
+  - Complete viewer protection, styling, and edit mode integration
+- **Core/BuffViewer.lua**: Specialized buff icon management
+  - `HookBuffViewerLayout()`, `UpdateBuffIconVisibility()`
+  - Dedicated buff viewer layout and visibility management
+- **Enhanced Core/Utils.lua**: Expanded shared utilities
+  - `IsSpellUsableByPlayerClass()`, `PixelPerfect()`, `AddPixelBorder()`
+  - Consolidated utility functions for positioning and validation
+- **Enhanced Core/ResourceBars.lua**: Advanced resource tracking
+  - `UpdateAllResourceBars()` with essence tracking and 120 FPS updates
+  - Centralized resource bar coordination and performance optimization
+
+### Code Quality & Runtime Safety
+- **Eliminated Specific Duplications**: Removed 1,505+ lines across:
+  - Icon management functions (221 lines)
+  - Viewer management functions (390 lines)
+  - Event handling and buff management (94 lines)
+  - Code cleanup: excessive spacing and comments (29 lines)
+- **Runtime Safety Improvements**:
+  - Added conditional function calls to prevent nil value errors during addon loading
+  - Implemented defensive programming patterns for event handlers
+  - Protected all Core module function calls from timing-based failures
+
+### Technical Architecture
+- **Global Function Exposure**: Maintained backward compatibility through careful global exposure
+- **Loading Order Optimization**: Proper .toc file ensures Core modules load before main.lua
+- **Module Independence**: Each Core module operates independently with clear interfaces
+
+### Bug Fixes
+- **Runtime Error Resolution**: Fixed "attempt to call global function (a nil value)" errors
+- **Timing Issues**: Resolved function availability during addon loading sequence
+- **Event Handler Safety**: Protected Core module function calls with conditional checks
+
 ## [1.2.0] - 2025-08-14
 
 ### Major Features
 - **Complete Cast Bar System**: Professional modular cast bar implementation
-  - **Modular Architecture**: Extracted cast bar system from monolithic main.lua into `Core/CastBars.lua`
-  - **Immediate Configuration Updates**: All 46 cast bar settings apply changes instantly without reload
-  - **Comprehensive Customization**: Full font selection, texture options, positioning, borders, and backgrounds
-  - **Professional UI Organization**: Settings organized into clear tabs (Settings/Appearance)
-  - **Improved Defaults**: Cast bar enabled by default with optimal settings for immediate use
-  - **Border & Background System**: Separate frame management with proper layering and customization
-  - **Initialization Fixes**: Cast bars now visible immediately upon login/reload
-  - **LibSharedMedia Integration**: Full support for custom fonts and textures
-  - **Auto-Width Support**: Intelligent bar sizing based on spell name length
-  - **Preview Mode**: Live preview of cast bar appearance while configuring
+  - Extracted cast bar system into dedicated `Core/CastBars.lua` module
+  - 46 cast bar configuration options with instant updates (no reload required)
+  - Comprehensive customization: fonts, textures, positioning, borders, backgrounds
+  - Settings organized into clear tabs (Settings/Appearance)
+  - Cast bars visible immediately upon login/reload
+  - LibSharedMedia integration for custom fonts and textures
+  - Auto-width support with intelligent bar sizing
+  - Live preview mode for configuration changes
 
-### Performance Optimizations
-- **Major Performance Overhaul**: Comprehensive optimization of core addon systems
-  - Implemented performance caching system with 0.1s timeout for database access
-  - Added spell information caching to reduce redundant API calls
-  - Extracted constants to centralized tables for better maintainability
-  - Optimized event throttling system with 60 FPS (16ms) throttling
+### Performance & Caching System
+- **Performance Cache System**: Major optimization of database and API access
+  - `GetCachedProfile()` - 0.1s timeout for database access (80% reduction in calls)
+  - `GetCachedSpellInfo()` - Spell information caching to reduce API calls
+  - Player class caching and automatic cache invalidation
+  - Event throttling system optimized to 60 FPS (16ms)
+- **Constants & Helper Functions**:
+  - `CONSTANTS` table for performance and UI values
+  - `CONFIG_CONSTANTS` table for configuration strings
+  - `CreateStandardBar()`, `CalculateBarWidth()`, `InvalidateCache()` functions
+  - Secondary resource helpers for Death Knight runes and combo points
 
-### Added
-- **Independent Bar System**: Major architectural improvement for bar independence
-  - Resource bars and cast bars now operate completely independently
-  - Each bar type can be positioned, styled, and configured separately
+### Independent Bar Architecture
+- **Bar Independence**: Complete separation of resource and cast bar systems
+  - Each bar type operates independently with separate state and configuration
   - Eliminates conflicts between different bar types
   - Improved flexibility for custom UI layouts
-- **Performance Cache System**: 
-  - `GetCachedProfile()` function for efficient database access
-  - `GetCachedSpellInfo()` function for spell data caching
-  - Player class caching to reduce repeated API calls
-  - Automatic cache invalidation on data changes
-- **Constants Tables**: 
-  - `CONSTANTS` table in main.lua with performance and UI values
-  - `CONFIG_CONSTANTS` table in config.lua for configuration strings
-  - Centralized hardcoded values for easier maintenance
-- **Helper Functions**:
-  - `CreateStandardBar()` for consistent bar creation
-  - `CalculateBarWidth()` for optimized width calculations
-  - Secondary resource helper functions for Death Knight runes and combo points
-  - `InvalidateCache()` functions for proper cache management
+  - Better reliability and reduced cross-system interference
 
-### Improved
-- **Cast Bar System Architecture**:
-  - Complete modular separation from main addon file (reduced from 3019 lines)
-  - Professional event-driven architecture with proper namespace isolation
-  - Immediate update system ensuring all configuration changes apply instantly
-  - Clean border/background frame management with proper layering
-  - Robust initialization sequence for immediate cast bar visibility
-- **Independent Bar Architecture**:
-  - Complete separation of resource bar and cast bar systems
-  - Each bar type maintains its own state and configuration
-  - Improved reliability and reduced cross-system interference
-  - Better support for complex UI layouts and positioning
-- **Main Addon Performance**:
-  - Reduced database access calls by ~80% through caching
-  - Optimized bar update functions with cached calculations
-  - Improved event handling with throttling system
-  - Streamlined secondary resource tracking (Death Knight runes, Combo Points, Chi)
-- **Configuration UI Performance**:
-  - Optimized `generateHiddenSpellArgs()` and `generateCustomSpellArgs()` functions
-  - Replaced repeated database access with cached profile access
-  - Improved `GetViewerSetting()` and `SetViewerSetting()` efficiency
-  - Reduced spell info lookups through caching
-- **Code Quality**:
-  - Eliminated redundant variables and calculations
-  - Improved error handling with proper fallback values
-  - Better memory management with automatic cache cleanup
-  - Consistent coding patterns throughout the addon
-
-### Technical
-- **Cast Bar Modular Implementation**: 
-  - Complete extraction to `Core/CastBars.lua` with proper namespace (`CooldownManager.CastBars`)
-  - 46 configuration options with immediate update system via `UpdateIndependentCastBar()`
-  - Border cleanup system removing old `AddPixelBorder` remnants
-  - Professional Settings/Appearance tab organization in configuration UI
-  - LibSharedMedia-3.0 integration for fonts and textures
-  - Separate background/border frame management with proper stacking
-  - Integration with `UpdateCombatVisibility()` for proper initialization
-- **Independent Bar Implementation**: Separate tracking and management systems for each bar type
-- **Cache Implementation**: Profile data cached for 0.1s, spell info cached indefinitely
-- **Event Throttling**: 60 FPS update rate (16.67ms) for smooth performance
-- **Constants Extraction**: Moved 15+ hardcoded values to centralized tables
-- **Database Optimization**: Reduced repeated `CooldownManagerDBHandler.profile` access
-- **API Optimization**: Cached `C_Spell.GetSpellInfo()` and `GetSpecializationInfo()` calls
-- **Memory Efficiency**: Implemented proper cache invalidation and cleanup
-- **Bar Independence**: Resource and cast bars no longer share state or interfere with each other
+### Cast Bar Technical Implementation
+- **Modular Architecture**: Professional namespace isolation (`CooldownManager.CastBars`)
+- **Border & Background System**: Separate frame management with proper layering
+- **Configuration Performance**: Optimized UI functions with cached database access
+- **Memory Management**: Proper cache cleanup and automatic invalidation
 
 ### Bug Fixes
-- **Cast Bar System**: Fixed initialization delays causing bars to not appear until first cast
-- **Border Rendering**: Resolved black background artifacts and border rendering issues
-- **Configuration Consistency**: Eliminated orphaned code and ensured all settings work immediately
-- Fixed potential memory leaks from excessive spell info lookups
-- Improved stability during rapid configuration changes
-- Better handling of missing or corrupted profile data
+- **Cast Bar Initialization**: Fixed delays causing bars to not appear until first cast
+- **Border Rendering**: Resolved black background artifacts
+- **Memory Leaks**: Fixed excessive spell info lookups
+- **Configuration Stability**: Improved handling during rapid setting changes
 
 ## [1.1.0] - 2025-08-12
 

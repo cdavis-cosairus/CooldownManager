@@ -726,7 +726,7 @@ function SetupOptions()
                                 desc = "Enable a single cast bar that can be attached to any viewer",
                                 get = function() 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.enabled or true -- Default: enabled
+                                    return CooldownManagerDBHandler.profile.independentCastBar.enabled ~= false -- Default: enabled
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
@@ -809,7 +809,7 @@ function SetupOptions()
                                 desc = "Automatically match the width of the attached viewer",
                                 get = function() 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.autoWidth or true -- Default: auto width enabled
+                                    return CooldownManagerDBHandler.profile.independentCastBar.autoWidth ~= false -- Default: auto width enabled
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.autoWidth = val 
@@ -897,7 +897,7 @@ function SetupOptions()
                                 desc = "Keep the cast bar visible for positioning even when not casting",
                                 get = function() 
                                     CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
-                                    return CooldownManagerDBHandler.profile.independentCastBar.showPreview or true -- Default: preview enabled for setup
+                                    return CooldownManagerDBHandler.profile.independentCastBar.showPreview ~= false -- Default: preview enabled for setup
                                 end,
                                 set = function(_, val) 
                                     CooldownManagerDBHandler.profile.independentCastBar.showPreview = val 
