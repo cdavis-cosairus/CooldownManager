@@ -639,7 +639,15 @@ end
 -- Expose essential functions and data globally for other modules
 CooldownManager.ResourceBars.essenceData = essenceData
 CooldownManager.ResourceBars.GetRelevantPowerType = GetRelevantPowerType
+CooldownManager.ResourceBars.UpdateEssenceTracking = UpdateEssenceTracking
+CooldownManager.ResourceBars.GetEssenceRechargeTime = GetEssenceRechargeTime
 
 -- Global function exposures for backward compatibility
 UpdateAllResourceBars = CooldownManager.ResourceBars.UpdateAllResourceBars
+GetRelevantPowerType = GetRelevantPowerType
+UpdateEssenceTracking = UpdateEssenceTracking
+GetEssenceRechargeTime = GetEssenceRechargeTime
 GetAuraDataBySpellID = GetAuraDataBySpellID
+
+-- Expose essenceData globally for main.lua access during transition
+_G.essenceData = essenceData
