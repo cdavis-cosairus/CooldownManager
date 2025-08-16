@@ -114,6 +114,11 @@ local mult = perfect / UIParent:GetScale()
 
 -- Make PixelPerfect function globally accessible for modules
 function PixelPerfect(v)
+    -- Safety check to prevent arithmetic on nil values
+    if not v or type(v) ~= "number" then
+        return 0
+    end
+    
     local screenWidth, screenHeight = GetPhysicalScreenSize()
     local uiScale = UIParent:GetEffectiveScale()
     local pixelSize = 768 / screenHeight / uiScale

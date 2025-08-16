@@ -529,22 +529,183 @@ function SetupOptions()
                         end,
                         order = 12,
                     },
-                    showSecondaryResource = {
+                },
+            },
+            
+            secondaryResourceBars = {
+                type = "group",
+                name = "Secondary Resource Bar",
+                order = 30.5,
+                args = {
+                    enabled = {
                         type = "toggle",
-                        name = "Show Secondary Resource Bar",
-                        desc = "Enable secondary resource bar for classes that have them (Death Knight runes, Combo Points, Chi)",
+                        name = "Enable Secondary Resource Bar",
+                        desc = "Enable secondary resource bar for classes that have them (Death Knight runes, Combo Points, Chi, Soul Fragments)",
                         get = function() 
-                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
-                            return CooldownManagerDBHandler.profile.independentResourceBar.showSecondaryResource ~= false -- Default: enabled
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.enabled or false 
                         end,
                         set = function(_, val) 
-                            CooldownManagerDBHandler.profile.independentResourceBar.showSecondaryResource = val 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.enabled = val 
+                            UpdateCombatVisibility()
                             -- Apply change immediately
-                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
-                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
                             end
                         end,
-                        order = 13,
+                        order = 1,
+                    },
+                    attachToViewer = {
+                        type = "select",
+                        name = "Attach to Viewer",
+                        desc = "Choose which viewer to attach the secondary resource bar to, or position it independently",
+                        values = {
+                            Independent = "Independent (manual positioning)",
+                            EssentialCooldownViewer = "Essential Cooldown Viewer",
+                            UtilityCooldownViewer = "Utility Cooldown Viewer", 
+                            BuffIconCooldownViewer = "Buff Icon Cooldown Viewer"
+                        },
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.attachToViewer or "EssentialCooldownViewer"
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.attachToViewer = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 2,
+                    },
+                    hideOutOfCombat = {
+                        type = "toggle",
+                        name = "Hide Out of Combat",
+                        desc = "Hide the secondary resource bar when not in combat",
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.hideOutOfCombat or false 
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.hideOutOfCombat = val 
+                            UpdateCombatVisibility()
+                        end,
+                        order = 3,
+                    },
+                    width = {
+                        type = "range",
+                        name = "Width",
+                        desc = "Width of the secondary resource bar",
+                        min = 50, max = 800, step = 5,
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.width or 300 
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.width = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        disabled = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.autoWidth or false
+                        end,
+                        order = 4,
+                    },
+                    autoWidth = {
+                        type = "toggle",
+                        name = "Auto Width",
+                        desc = "Automatically match the width of the attached viewer",
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.autoWidth or false 
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.autoWidth = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 4.5,
+                    },
+                    height = {
+                        type = "range",
+                        name = "Height",
+                        desc = "Height of the secondary resource bar",
+                        min = 8, max = 40, step = 1,
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.height or 16 
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.height = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 5,
+                    },
+                    offsetX = {
+                        type = "range",
+                        name = "Horizontal Offset",
+                        desc = "Horizontal position offset from viewer (or screen center if independent)",
+                        min = -200, max = 200, step = 1,
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.offsetX or 0 
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.offsetX = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 6,
+                    },
+                    offsetY = {
+                        type = "range",
+                        name = "Vertical Offset",
+                        desc = "Vertical position offset from viewer (or screen center if independent)",
+                        min = -200, max = 200, step = 1,
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.offsetY or -30 
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.offsetY = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 7,
+                    },
+                    texture = {
+                        type = "select",
+                        dialogControl = 'LSM30_Statusbar',
+                        name = "Secondary Resource Bar Texture",
+                        desc = "Choose the texture for the secondary resource bar",
+                        values = LSM:HashTable("statusbar"),
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textureName or "Blizzard"
+                        end,
+                        set = function(_, key)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.textureName = key
+                            local path = LSM:Fetch("statusbar", key)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.texture = path
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 8,
                     },
                 },
             },
@@ -1437,7 +1598,7 @@ end)
 
 
 
--- Combat visibility management (resource bar only)
+-- Combat visibility management (resource bars)
 function UpdateCombatVisibility()
     local inCombat = InCombatLockdown()
     
@@ -1457,6 +1618,25 @@ function UpdateCombatVisibility()
             end
         else
             independentBar:Show() -- Always show if combat setting is disabled
+        end
+    end
+    
+    -- Handle independent secondary resource bar visibility
+    if CooldownManagerDBHandler.profile.independentSecondaryResourceBar and 
+       CooldownManagerDBHandler.profile.independentSecondaryResourceBar.enabled and
+       CooldownManagerResourceBars and CooldownManagerResourceBars["IndependentSecondary"] then
+        
+        local independentSecondaryBar = CooldownManagerResourceBars["IndependentSecondary"]
+        local hideOutOfCombat = CooldownManagerDBHandler.profile.independentSecondaryResourceBar.hideOutOfCombat
+        
+        if hideOutOfCombat then
+            if inCombat then
+                independentSecondaryBar:Show()
+            else
+                independentSecondaryBar:Hide()
+            end
+        else
+            independentSecondaryBar:Show() -- Always show if combat setting is disabled
         end
     end
 end

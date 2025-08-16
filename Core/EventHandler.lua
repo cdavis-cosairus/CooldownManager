@@ -149,6 +149,8 @@ function CooldownManager.EventHandler.HandleLogin()
             C_Timer.After(0, function()
                 SetupOptions()
                 CooldownManager.ViewerManager.HookEditModeUpdates()
+                -- Initialize resource bars after everything is loaded
+                CooldownManager.ResourceBars.UpdateAllResourceBars()
             end)
 
         elseif event == "EDIT_MODE_LAYOUTS_UPDATED" then
