@@ -582,10 +582,8 @@ function LayoutCooldownIcons(viewer)
     if CooldownManagerDBHandler.profile.viewers[viewerName] then
         local settings = CooldownManagerDBHandler.profile.viewers[viewerName]
         
-        -- Create resource bar if enabled but doesn't exist  
-        if settings.showResourceBar and not CooldownManagerResourceBars[viewerName] then
-            CooldownManager.ResourceBars.UpdateResourceBar(viewer)
-        end
+        -- Viewer resource bars removed - only independent resource bar available
+        -- Use the independent resource bar configuration instead
         
         -- Create cast bar if enabled but doesn't exist  
         if settings.showCastBar and not CooldownManagerCastBars[viewerName] then

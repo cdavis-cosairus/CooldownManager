@@ -5,7 +5,7 @@ $errors = 0
 foreach ($f in $files) { 
     if (Test-Path $f) { 
         $cmd = "local file, err = loadfile('$f'); if file then print('OK') else print('ERROR'); os.exit(1) end"
-        $result = lua -e $cmd 2>&1
+        lua -e $cmd 2>&1 | Out-Null
         Write-Host "$f " -NoNewline
         if ($LASTEXITCODE -eq 0) { Write-Host "[OK]" -ForegroundColor Green } else { Write-Host "[ERROR]" -ForegroundColor Red; $errors++ }
     } else { 

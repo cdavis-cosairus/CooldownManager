@@ -1117,12 +1117,13 @@ local function UpdateAllResourceBars()
         CooldownManager.CastBars.UpdateIndependentCastBar()
     end
 
-    for _, viewerName in ipairs(viewers) do
-        local viewer = _G[viewerName]
-        if viewer then
-            UpdateResourceBar(viewer)
-        end
-    end
+    -- Viewer resource bars removed - functionality moved to independent resource bar
+    -- for _, viewerName in ipairs(viewers) do
+    --     local viewer = _G[viewerName]
+    --     if viewer then
+    --         UpdateResourceBar(viewer)
+    --     end
+    -- end
 
     for name, bar in pairs(resourceBars) do
 
@@ -1967,10 +1968,10 @@ db.spellPriority = cleanedPriority -- Save cleaned list back
     if CooldownManagerDBHandler.profile.viewers[viewerName] then
         local settings = CooldownManagerDBHandler.profile.viewers[viewerName]
         
-        -- Create resource bar if enabled but doesn't exist  
-        if settings.showResourceBar and not CooldownManagerResourceBars[viewerName] then
-            UpdateResourceBar(viewer)
-        end
+        -- Viewer resource bars removed - use independent resource bar instead
+        -- if settings.showResourceBar and not CooldownManagerResourceBars[viewerName] then
+        --     UpdateResourceBar(viewer)
+        -- end
     end
 end
 
