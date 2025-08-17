@@ -145,6 +145,9 @@ function CooldownManager.ViewerManager.TrySkin()
     if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then
         return
     end
+    if CooldownManagerDBHandler.profile.enableIconReskinning == false then
+        return
+    end
     
     for _, name in ipairs(CooldownManager.viewers) do
         CooldownManager.ViewerManager.SkinViewer(name)
