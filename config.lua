@@ -645,6 +645,69 @@ function SetupOptions()
                         end,
                         order = 17,
                     },
+                    borderHeader = {
+                        type = "header",
+                        name = "Border Settings",
+                        order = 18,
+                    },
+                    borderTexture = {
+                        type = "select",
+                        dialogControl = 'LSM30_Border',
+                        name = "Border Texture",
+                        desc = "Choose the border texture for the resource bar",
+                        values = LSM:HashTable("border"),
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.borderTextureName or "Blizzard Tooltip"
+                        end,
+                        set = function(_, key)
+                            CooldownManagerDBHandler.profile.independentResourceBar.borderTextureName = key
+                            local path = LSM:Fetch("border", key)
+                            CooldownManagerDBHandler.profile.independentResourceBar.borderTexture = path
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 19,
+                    },
+                    borderSize = {
+                        type = "range",
+                        name = "Border Size",
+                        desc = "Thickness of the border",
+                        min = 0, max = 32, step = 1,
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.borderSize or 0 -- Default: no border
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentResourceBar.borderSize = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 20,
+                    },
+                    borderColor = {
+                        type = "color",
+                        name = "Border Color",
+                        desc = "Color of the border",
+                        hasAlpha = true,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            local c = CooldownManagerDBHandler.profile.independentResourceBar.borderColor or { r = 1, g = 1, b = 1, a = 1 }
+                            return c.r, c.g, c.b, c.a
+                        end,
+                        set = function(_, r, g, b, a)
+                            CooldownManagerDBHandler.profile.independentResourceBar.borderColor = { r = r, g = g, b = b, a = a }
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 21,
+                    },
                 },
             },
             
@@ -958,6 +1021,69 @@ function SetupOptions()
                             end
                         end,
                         order = 13,
+                    },
+                    borderHeader = {
+                        type = "header",
+                        name = "Border Settings",
+                        order = 14,
+                    },
+                    borderTexture = {
+                        type = "select",
+                        dialogControl = 'LSM30_Border',
+                        name = "Border Texture",
+                        desc = "Choose the border texture for the secondary resource bar",
+                        values = LSM:HashTable("border"),
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.borderTextureName or "Blizzard Tooltip"
+                        end,
+                        set = function(_, key)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.borderTextureName = key
+                            local path = LSM:Fetch("border", key)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.borderTexture = path
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 15,
+                    },
+                    borderSize = {
+                        type = "range",
+                        name = "Border Size",
+                        desc = "Thickness of the border",
+                        min = 0, max = 32, step = 1,
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.borderSize or 0 -- Default: no border
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.borderSize = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 16,
+                    },
+                    borderColor = {
+                        type = "color",
+                        name = "Border Color",
+                        desc = "Color of the border",
+                        hasAlpha = true,
+                        get = function()
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            local c = CooldownManagerDBHandler.profile.independentSecondaryResourceBar.borderColor or { r = 1, g = 1, b = 1, a = 1 }
+                            return c.r, c.g, c.b, c.a
+                        end,
+                        set = function(_, r, g, b, a)
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.borderColor = { r = r, g = g, b = b, a = a }
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 17,
                     },
                 },
             },

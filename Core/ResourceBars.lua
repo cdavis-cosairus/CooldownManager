@@ -122,6 +122,104 @@ local function CalculateBrightnessMultiplier(fillPercentage)
     end
 end
 
+-- Helper function to add borders to resource bars
+local function AddResourceBarBorder(bar, settings)
+    if not bar or not settings then return end
+    
+    local borderSize = settings.borderSize or 0
+    local borderColor = settings.borderColor or { r = 1, g = 1, b = 1, a = 1 }
+    local borderTexture = settings.borderTexture
+    
+    -- Remove existing border frame if it exists
+    if bar._borderFrame then
+        bar._borderFrame:Hide()
+        bar._borderFrame = nil
+    end
+    
+    -- Remove old AddPixelBorder style borders if they exist
+    if bar.__borderParts then
+        for _, line in ipairs(bar.__borderParts) do
+            if line then
+                line:Hide()
+                line:SetParent(nil)
+            end
+        end
+        bar.__borderParts = nil
+    end
+    
+    -- Only create border if size > 0
+    if borderSize > 0 then
+        -- Create border frame
+        bar._borderFrame = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+        bar._borderFrame:SetAllPoints(bar)
+        bar._borderFrame:SetFrameLevel(bar:GetFrameLevel() + 1)
+        
+        -- Create border texture
+        if borderTexture and LSM then
+            -- Use LSM border texture with modern backdrop system
+            local texture = LSM:Fetch("border", settings.borderTextureName or "Blizzard Tooltip")
+            if texture then
+                bar._borderFrame:SetBackdrop({
+                    edgeFile = texture,
+                    edgeSize = borderSize,
+                })
+                bar._borderFrame:SetBackdropBorderColor(borderColor.r, borderColor.g, borderColor.b, borderColor.a)
+            else
+                -- Fallback if texture not found
+                bar._borderFrame = nil
+                borderSize = 0
+            end
+        end
+        
+        -- Fallback to simple pixel border if no texture or texture failed
+        if not bar._borderFrame or borderSize == 0 then
+            -- Remove failed border frame
+            if bar._borderFrame then
+                bar._borderFrame:Hide()
+                bar._borderFrame = nil
+            end
+            
+            -- Create simple pixel border using textures
+            bar._borderFrame = CreateFrame("Frame", nil, bar)
+            bar._borderFrame:SetAllPoints(bar)
+            bar._borderFrame:SetFrameLevel(bar:GetFrameLevel() + 1)
+            
+            local function CreateBorderLine()
+                local line = bar._borderFrame:CreateTexture(nil, "OVERLAY")
+                line:SetColorTexture(borderColor.r, borderColor.g, borderColor.b, borderColor.a)
+                return line
+            end
+            
+            -- Create four border lines
+            local top = CreateBorderLine()
+            top:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+            top:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
+            top:SetHeight(borderSize)
+            
+            local bottom = CreateBorderLine()
+            bottom:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+            bottom:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+            bottom:SetHeight(borderSize)
+            
+            local left = CreateBorderLine()
+            left:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+            left:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
+            left:SetWidth(borderSize)
+            
+            local right = CreateBorderLine()
+            right:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
+            right:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
+            right:SetWidth(borderSize)
+            
+            bar._borderFrame._lines = {top, bottom, left, right}
+        end
+        
+        if bar._borderFrame then
+            bar._borderFrame:Show()
+        end
+    end
+end
+
 -- Helper function for updating Brewmaster Monk stagger bar
 local function UpdateBrewmasterStagger(sbar, texture)
     -- Get stagger info
@@ -356,7 +454,6 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
         sbar.Background = sbar:CreateTexture(nil, "BACKGROUND")
         sbar.Background:SetAllPoints()
         sbar.Background:SetColorTexture(unpack(CooldownManager.CONSTANTS.COLORS.BACKGROUND))
-        AddPixelBorder(sbar)
         independentSecondaryResourceBar = sbar
     end
 
@@ -408,6 +505,9 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
         offsetY = settings.offsetY or -130  -- Different default for independent mode
         sbar:SetPoint("CENTER", UIParent, "CENTER", PixelPerfect(offsetX), PixelPerfect(offsetY))
     end
+
+    -- Add border if configured
+    AddResourceBarBorder(sbar, settings)
 
     -- Dedicated OnUpdate for 120 FPS secondary resource bar updates
     if not sbar._secondaryUpdateHooked then
@@ -518,7 +618,6 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
         local bar = CooldownManager.CreateStandardBar("CooldownManagerIndependentResourceBar", "resource", settings)
         bar:SetStatusBarColor(0, 0.6, 1, 1)
         bar.Ticks = {}
-        AddPixelBorder(bar)
         independentResourceBar = bar
     end
 
@@ -598,6 +697,9 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
         offsetY = settings.offsetY or -100  -- Different default for independent mode
         bar:SetPoint("CENTER", UIParent, "CENTER", PixelPerfect(offsetX), PixelPerfect(offsetY))
     end
+
+    -- Add border if configured
+    AddResourceBarBorder(bar, settings)
 
     -- Update colors and power logic
     local class, classFile = CooldownManager.GetCachedPlayerClass()
