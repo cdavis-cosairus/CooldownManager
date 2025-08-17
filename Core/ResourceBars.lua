@@ -122,6 +122,88 @@ local function CalculateBrightnessMultiplier(fillPercentage)
     end
 end
 
+-- Helper function for updating Brewmaster Monk stagger bar
+local function UpdateBrewmasterStagger(sbar, texture)
+    -- Get stagger info
+    local staggerAuraInfo = GetAuraDataBySpellID("player", 124275) -- Heavy Stagger
+    if not staggerAuraInfo then
+        staggerAuraInfo = GetAuraDataBySpellID("player", 124274) -- Moderate Stagger  
+    end
+    if not staggerAuraInfo then
+        staggerAuraInfo = GetAuraDataBySpellID("player", 124273) -- Light Stagger
+    end
+    
+    local staggerAmount = 0
+    local maxHealth = UnitHealthMax("player")
+    local staggerPercentage = 0
+    local staggerTickDamage = 0
+    
+    if staggerAuraInfo and staggerAuraInfo.points and staggerAuraInfo.points[1] then
+        staggerAmount = staggerAuraInfo.points[1]
+        staggerPercentage = (staggerAmount / maxHealth) * 100
+        -- Calculate tick damage (stagger ticks every 0.5 seconds, total duration varies)
+        staggerTickDamage = math.floor(staggerAmount * 0.02) -- Approximate 2% per tick
+    end
+    
+    -- Create or update the stagger bar
+    if not sbar.StaggerBar then
+        sbar.StaggerBar = CooldownManager.CreateSecondaryResourceComponent(sbar, texture, sbar:GetWidth(), sbar:GetHeight())
+        sbar.StaggerBar:SetPoint("LEFT", sbar, "LEFT", 0, 0)
+        
+        -- Create text overlays for tick and percentage
+        sbar.StaggerBar.TickText = sbar.StaggerBar:CreateFontString(nil, "OVERLAY")
+        sbar.StaggerBar.TickText:SetFont(CooldownManager.CONSTANTS.FONTS.DEFAULT, 12, "OUTLINE")
+        sbar.StaggerBar.TickText:SetPoint("LEFT", sbar.StaggerBar, "LEFT", 4, 0)
+        sbar.StaggerBar.TickText:SetTextColor(1, 1, 1, 1)
+        
+        sbar.StaggerBar.PercentText = sbar.StaggerBar:CreateFontString(nil, "OVERLAY")
+        sbar.StaggerBar.PercentText:SetFont(CooldownManager.CONSTANTS.FONTS.DEFAULT, 12, "OUTLINE")
+        sbar.StaggerBar.PercentText:SetPoint("RIGHT", sbar.StaggerBar, "RIGHT", -4, 0)
+        sbar.StaggerBar.PercentText:SetTextColor(1, 1, 1, 1)
+    end
+    
+    -- Update bar size to match parent
+    sbar.StaggerBar:SetWidth(sbar:GetWidth())
+    sbar.StaggerBar:SetHeight(sbar:GetHeight())
+    
+    -- Set bar fill based on stagger percentage (scale to reasonable max of 50% health)
+    local maxDisplayPercentage = 50
+    local fillValue = math.min(staggerPercentage / maxDisplayPercentage, 1.0)
+    sbar.StaggerBar:SetMinMaxValues(0, 1)
+    sbar.StaggerBar:SetValue(fillValue)
+    
+    -- Color coding based on stagger level
+    local color
+    if staggerPercentage >= 15 then
+        -- Heavy stagger (red)
+        color = CooldownManager.CONSTANTS.COLORS.STAGGER.HEAVY
+    elseif staggerPercentage >= 6 then
+        -- Moderate stagger (yellow/orange)
+        color = CooldownManager.CONSTANTS.COLORS.STAGGER.MODERATE
+    elseif staggerPercentage > 0 then
+        -- Light stagger (green)
+        color = CooldownManager.CONSTANTS.COLORS.STAGGER.LIGHT
+    else
+        -- No stagger (transparent)
+        color = {0.3, 0.3, 0.3}
+    end
+    
+    -- Apply brightness multiplier based on fill amount
+    local brightness = CalculateBrightnessMultiplier(fillValue)
+    sbar.StaggerBar:SetStatusBarColor(color[1] * brightness, color[2] * brightness, color[3] * brightness, 1)
+    
+    -- Update text displays
+    if staggerAmount > 0 then
+        sbar.StaggerBar.TickText:SetText(string.format("%d", staggerTickDamage))
+        sbar.StaggerBar.PercentText:SetText(string.format("%.1f%%", staggerPercentage))
+    else
+        sbar.StaggerBar.TickText:SetText("")
+        sbar.StaggerBar.PercentText:SetText("")
+    end
+    
+    sbar.StaggerBar:Show()
+end
+
 -- Helper function for updating Death Knight runes
 local function UpdateDeathKnightRunes(sbar, totalRunes, runeWidth, texture)
     sbar.Runes = sbar.Runes or {}
@@ -257,7 +339,7 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
     local hasSecondaryResource = (class == "DEATHKNIGHT") or 
                                 (class == "ROGUE") or 
                                 (class == "DRUID" and GetSpecialization() == 2) or 
-                                (class == "MONK" and GetSpecialization() == 3) or 
+                                (class == "MONK" and (GetSpecialization() == 1 or GetSpecialization() == 3)) or 
                                 (class == "DEMONHUNTER" and GetSpecialization() == 2)
     
     if not hasSecondaryResource then
@@ -349,6 +431,9 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
                 local pointWidth = PixelPerfect((frameWidth - (maxCP - 1)) / maxCP)
                 UpdateComboPointsOrChi(self, maxCP, currentCP, pointWidth, texture, 
                     CooldownManager.CONSTANTS.COLORS.COMBO_POINTS, {0.3, 0.3, 0.3})
+            elseif class == "MONK" and GetSpecialization() == 1 then
+                -- Brewmaster Monk - Stagger Bar
+                UpdateBrewmasterStagger(self, texture)
             elseif class == "MONK" and GetSpecialization() == 3 then
                 local maxChi = UnitPowerMax("player", Enum.PowerType.Chi) or 5
                 local currentChi = UnitPower("player", Enum.PowerType.Chi) or 0
@@ -388,6 +473,9 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
         local pointWidth = PixelPerfect((frameWidth - (maxCP - 1)) / maxCP)
         UpdateComboPointsOrChi(sbar, maxCP, currentCP, pointWidth, texture, 
             CooldownManager.CONSTANTS.COLORS.COMBO_POINTS, {0.3, 0.3, 0.3})
+    elseif class == "MONK" and GetSpecialization() == 1 then
+        sbar:Show()
+        UpdateBrewmasterStagger(sbar, texture)
     elseif class == "MONK" and GetSpecialization() == 3 then
         sbar:Show()
         local maxChi = UnitPowerMax("player", Enum.PowerType.Chi) or 5

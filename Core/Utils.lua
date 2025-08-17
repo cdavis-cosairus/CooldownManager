@@ -26,7 +26,12 @@ CooldownManager.CONSTANTS = {
             [252] = {0.1, 0.8, 0.1}  -- Unholy
         },
         COMBO_POINTS = {1, 0.85, 0.1},
-        CHI = {0.4, 1, 0.6}
+        CHI = {0.4, 1, 0.6},
+        STAGGER = {
+            LIGHT = {0.4, 0.8, 0.4},     -- Green for light stagger
+            MODERATE = {1.0, 0.6, 0.2},  -- Orange for moderate stagger  
+            HEAVY = {0.8, 0.2, 0.2}      -- Red for heavy stagger
+        }
     },
     SIZES = {
         DEFAULT_RESOURCE_HEIGHT = 16,
