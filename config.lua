@@ -380,6 +380,27 @@ function SetupOptions()
                         end,
                         order = 3,
                     },
+                    attachPosition = {
+                        type = "select",
+                        name = "Attach Position",
+                        desc = "Choose whether the resource bar appears above or below the viewer",
+                        values = {
+                            top = "Above Viewer",
+                            bottom = "Below Viewer"
+                        },
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentResourceBar = CooldownManagerDBHandler.profile.independentResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentResourceBar.attachPosition or "top"
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentResourceBar.attachPosition = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentResourceBar()
+                            end
+                        end,
+                        order = 3.5,
+                    },
                     width = {
                         type = "range",
                         name = "Width",
@@ -687,6 +708,47 @@ function SetupOptions()
                             UpdateCombatVisibility()
                         end,
                         order = 3,
+                    },
+                    repositionCastBar = {
+                        type = "toggle",
+                        name = "Reposition Cast Bar When Hidden",
+                        desc = "When secondary resource bar is disabled or hidden, move the cast bar into its space to utilize screen real estate",
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.repositionCastBar or false 
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.repositionCastBar = val 
+                            -- Apply change immediately to both bars
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                            if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                CooldownManager.CastBars.UpdateIndependentCastBar()
+                            end
+                        end,
+                        order = 3.5,
+                    },
+                    attachPosition = {
+                        type = "select",
+                        name = "Attach Position",
+                        desc = "Choose whether the secondary resource bar appears above or below the viewer",
+                        values = {
+                            top = "Above Viewer",
+                            bottom = "Below Viewer"
+                        },
+                        get = function() 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar = CooldownManagerDBHandler.profile.independentSecondaryResourceBar or {}
+                            return CooldownManagerDBHandler.profile.independentSecondaryResourceBar.attachPosition or "bottom"
+                        end,
+                        set = function(_, val) 
+                            CooldownManagerDBHandler.profile.independentSecondaryResourceBar.attachPosition = val 
+                            -- Apply change immediately
+                            if CooldownManager and CooldownManager.ResourceBars and CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar then
+                                CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
+                            end
+                        end,
+                        order = 3.6,
                     },
                     width = {
                         type = "range",
@@ -1926,6 +1988,14 @@ function UpdateCombatVisibility()
         else
             independentSecondaryBar:Show() -- Always show if combat setting is disabled
         end
+    end
+    
+    -- Update cast bar positioning if repositioning is enabled
+    -- This handles cases where secondary bar visibility changes due to combat state
+    if CooldownManagerDBHandler.profile.independentSecondaryResourceBar and 
+       CooldownManagerDBHandler.profile.independentSecondaryResourceBar.repositionCastBar and
+       CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+        CooldownManager.CastBars.UpdateIndependentCastBar()
     end
 end
 

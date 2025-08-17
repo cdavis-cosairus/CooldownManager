@@ -312,10 +312,15 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
     sbar:ClearAllPoints()
     local offsetX = settings.offsetX or 0
     local offsetY = settings.offsetY or -30  -- Default below instead of above
+    local attachPosition = settings.attachPosition or "bottom"  -- Default to bottom for secondary resource bar
     
     if viewer and viewer:IsShown() and settings.attachToViewer ~= "Independent" then
-        -- Position relative to viewer
-        sbar:SetPoint("TOP", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+        -- Position relative to viewer with attachment position
+        if attachPosition == "bottom" then
+            sbar:SetPoint("TOP", viewer, "BOTTOM", PixelPerfect(offsetX), PixelPerfect(-offsetY))
+        else -- top
+            sbar:SetPoint("BOTTOM", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+        end
     else
         -- Independent positioning
         offsetY = settings.offsetY or -130  -- Different default for independent mode
@@ -491,10 +496,15 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
     bar:ClearAllPoints()
     local offsetX = settings.offsetX or 0
     local offsetY = settings.offsetY or 20
+    local attachPosition = settings.attachPosition or "top"  -- Default to top for main resource bar
     
     if viewer and viewer:IsShown() then
-        -- Position relative to viewer
-        bar:SetPoint("TOP", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+        -- Position relative to viewer with attachment position
+        if attachPosition == "bottom" then
+            bar:SetPoint("TOP", viewer, "BOTTOM", PixelPerfect(offsetX), PixelPerfect(-offsetY))
+        else -- top
+            bar:SetPoint("BOTTOM", viewer, "TOP", PixelPerfect(offsetX), PixelPerfect(offsetY))
+        end
     else
         -- Fall back to independent positioning
         offsetY = settings.offsetY or -100  -- Different default for independent mode

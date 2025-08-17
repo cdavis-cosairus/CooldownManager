@@ -127,6 +127,45 @@ function CooldownManager.CastBars.UpdateIndependentCastBar()
     local offsetY = settings.offsetY or 17
     local attachPosition = settings.attachPosition or "top"
     
+    -- Check if we should reposition the cast bar due to hidden secondary resource bar
+    local secondaryResourceSettings = profile.independentSecondaryResourceBar or {}
+    local shouldRepositionCastBar = false
+    
+    if secondaryResourceSettings.repositionCastBar then
+        -- Check if secondary resource bar is effectively hidden
+        local secondaryBarEnabled = secondaryResourceSettings.enabled or false
+        local secondaryBarVisible = true
+        
+        -- Check if secondary bar is hidden due to out of combat setting
+        if secondaryResourceSettings.hideOutOfCombat and not InCombatLockdown() then
+            secondaryBarVisible = false
+        end
+        
+        -- Check if current class actually has secondary resources
+        local playerClass = select(2, UnitClass("player"))
+        local hasSecondaryResources = (playerClass == "DEATHKNIGHT" or 
+                                      playerClass == "ROGUE" or 
+                                      playerClass == "MONK" or 
+                                      playerClass == "DEMONHUNTER" or
+                                      (playerClass == "DRUID" and GetSpecialization() == 2) or -- Feral
+                                      (playerClass == "WARLOCK" and GetSpecialization() == 2)) -- Demo (Soul Fragments)
+        
+        -- Check if secondary bar is disabled, hidden, or not relevant for this class
+        if not secondaryBarEnabled or not secondaryBarVisible or not hasSecondaryResources then
+            shouldRepositionCastBar = true
+            
+            -- Adjust offset to move cast bar closer to viewer (into secondary bar space)
+            local secondaryBarHeight = secondaryResourceSettings.height or 20
+            
+            -- Move closer to the viewer by reducing the offset
+            if attachPosition == "bottom" then
+                offsetY = offsetY - secondaryBarHeight - 5 -- Move closer (less distance from viewer)
+            else -- top
+                offsetY = offsetY - secondaryBarHeight - 5 -- Move closer (less distance from viewer)
+            end
+        end
+    end
+    
     if attachPosition == "bottom" then
         bar:SetPoint("TOP", viewer, "BOTTOM", PixelPerfect(offsetX), PixelPerfect(-offsetY))
     else -- top (default)
