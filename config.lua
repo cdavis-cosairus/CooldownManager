@@ -48,6 +48,25 @@ local function GetCachedSpellInfo(spellID)
     return spellInfoCache[spellID]
 end
 
+-- StaticPopup for Masque reload confirmation
+StaticPopupDialogs["COOLDOWNMANAGER_RELOAD_UI_MASQUE"] = {
+    text = "Disabling Masque integration requires a UI reload to properly clean up skinning. Reload now?",
+    button1 = "Reload UI",
+    button2 = "Cancel",
+    OnAccept = function()
+        -- Disable Masque before reload
+        CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+        CooldownManagerDBHandler.profile.masque.enabled = false
+        ReloadUI()
+    end,
+    OnCancel = function()
+        -- Do nothing - keep current setting
+    end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
 
 SetupOptions = nil
 
@@ -1655,6 +1674,159 @@ function SetupOptions()
                                 order = 5,
                             },
                         },
+                    },
+                },
+            },
+            
+            masque = {
+                type = "group",
+                name = "Masque Integration",
+                order = 32,
+                args = {
+                    enabled = {
+                        type = "toggle",
+                        name = "Enable Masque Skinning",
+                        desc = "Enable Masque integration for spell icon skinning (requires Masque addon)",
+                        get = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            return CooldownManagerDBHandler.profile.masque.enabled or false
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            local currentEnabled = CooldownManagerDBHandler.profile.masque.enabled or false
+                            
+                            -- If disabling Masque, require a reload
+                            if currentEnabled and not val then
+                                StaticPopup_Show("COOLDOWNMANAGER_RELOAD_UI_MASQUE")
+                                return -- Don't change the setting until reload is accepted
+                            end
+                            
+                            CooldownManagerDBHandler.profile.masque.enabled = val
+                            -- Apply changes to all viewers
+                            C_Timer.After(0.1, function()
+                                if TrySkin then TrySkin() end
+                            end)
+                        end,
+                        disabled = function()
+                            return not (CooldownManager and CooldownManager.IsMasqueEnabled and CooldownManager.IsMasqueEnabled())
+                        end,
+                        order = 1,
+                    },
+                    status = {
+                        type = "description",
+                        name = function()
+                            if CooldownManager and CooldownManager.IsMasqueEnabled and CooldownManager.IsMasqueEnabled() then
+                                return "|cff00ff00Masque addon detected and available|r"
+                            else
+                                return "|cffff0000Masque addon not found. Please install Masque to use this feature.|r"
+                            end
+                        end,
+                        order = 2,
+                    },
+                    header = {
+                        type = "header",
+                        name = "Viewer Settings",
+                        order = 3,
+                    },
+                    essentialViewer = {
+                        type = "toggle",
+                        name = "Essential Cooldown Viewer",
+                        desc = "Apply Masque skinning to Essential Cooldown Viewer icons",
+                        get = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            CooldownManagerDBHandler.profile.masque.viewers = CooldownManagerDBHandler.profile.masque.viewers or {}
+                            return CooldownManagerDBHandler.profile.masque.viewers.EssentialCooldownViewer ~= false
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.masque.viewers = CooldownManagerDBHandler.profile.masque.viewers or {}
+                            CooldownManagerDBHandler.profile.masque.viewers.EssentialCooldownViewer = val
+                            C_Timer.After(0.1, function()
+                                if TrySkin then TrySkin() end
+                            end)
+                        end,
+                        disabled = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            return not CooldownManagerDBHandler.profile.masque.enabled
+                        end,
+                        order = 4,
+                    },
+                    utilityViewer = {
+                        type = "toggle",
+                        name = "Utility Cooldown Viewer",
+                        desc = "Apply Masque skinning to Utility Cooldown Viewer icons",
+                        get = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            CooldownManagerDBHandler.profile.masque.viewers = CooldownManagerDBHandler.profile.masque.viewers or {}
+                            return CooldownManagerDBHandler.profile.masque.viewers.UtilityCooldownViewer ~= false
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.masque.viewers = CooldownManagerDBHandler.profile.masque.viewers or {}
+                            CooldownManagerDBHandler.profile.masque.viewers.UtilityCooldownViewer = val
+                            C_Timer.After(0.1, function()
+                                if TrySkin then TrySkin() end
+                            end)
+                        end,
+                        disabled = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            return not CooldownManagerDBHandler.profile.masque.enabled
+                        end,
+                        order = 5,
+                    },
+                    buffViewer = {
+                        type = "toggle",
+                        name = "Buff Icon Cooldown Viewer",
+                        desc = "Apply Masque skinning to Buff Icon Cooldown Viewer icons",
+                        get = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            CooldownManagerDBHandler.profile.masque.viewers = CooldownManagerDBHandler.profile.masque.viewers or {}
+                            return CooldownManagerDBHandler.profile.masque.viewers.BuffIconCooldownViewer ~= false
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.masque.viewers = CooldownManagerDBHandler.profile.masque.viewers or {}
+                            CooldownManagerDBHandler.profile.masque.viewers.BuffIconCooldownViewer = val
+                            C_Timer.After(0.1, function()
+                                if TrySkin then TrySkin() end
+                            end)
+                        end,
+                        disabled = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            return not CooldownManagerDBHandler.profile.masque.enabled
+                        end,
+                        order = 6,
+                    },
+                    conflictHeader = {
+                        type = "header",
+                        name = "Skin Conflicts",
+                        order = 7,
+                    },
+                    disableBuiltinSkinning = {
+                        type = "toggle",
+                        name = "Disable Built-in Icon Styling",
+                        desc = "Disable CooldownManager's built-in icon borders and styling when Masque is enabled to prevent conflicts",
+                        get = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            return CooldownManagerDBHandler.profile.masque.disableBuiltinSkinning or false
+                        end,
+                        set = function(_, val)
+                            CooldownManagerDBHandler.profile.masque.disableBuiltinSkinning = val
+                            C_Timer.After(0.1, function()
+                                if TrySkin then TrySkin() end
+                            end)
+                        end,
+                        disabled = function()
+                            CooldownManagerDBHandler.profile.masque = CooldownManagerDBHandler.profile.masque or {}
+                            return not CooldownManagerDBHandler.profile.masque.enabled
+                        end,
+                        order = 8,
+                    },
+                    info = {
+                        type = "description",
+                        name = "\n|cffccccccMasque Integration Notes:|r\n" ..
+                               "• Masque skins are configured through the Masque addon interface\n" ..
+                               "• Each viewer creates its own Masque group for independent styling\n" ..
+                               "• Disable built-in styling to prevent visual conflicts\n" ..
+                               "• Icons must be refreshed when changing Masque skins",
+                        order = 9,
                     },
                 },
             },

@@ -80,12 +80,36 @@ function CooldownManager.ViewerManager.SkinViewer(viewerName)
 
     -- Skin each icon
     local children = { viewer:GetChildren() }
+    local profile = CooldownManagerDBHandler and CooldownManagerDBHandler.profile
+    local masqueEnabled = profile and profile.masque and profile.masque.enabled
+    local viewerMasqueEnabled = masqueEnabled and profile.masque.viewers and profile.masque.viewers[viewerName] ~= false
+    local disableBuiltinSkinning = masqueEnabled and profile.masque.disableBuiltinSkinning
+    
     for _, child in ipairs(children) do
         if child and child.Icon then
-            local z = CooldownManagerDBHandler.profile.iconZoom or 0.25
-            child.Icon:SetTexCoord(z, 1 - z, z, 1 - z)
-            AddPixelBorder(child)
+            -- Apply Masque skinning if enabled
+            if viewerMasqueEnabled and CooldownManager.AddIconToMasque then
+                CooldownManager.AddIconToMasque(child, viewerName)
+                -- Hide built-in borders when Masque is enabled
+                if child.__borderParts then
+                    for _, line in ipairs(child.__borderParts) do
+                        if line then line:Hide() end
+                    end
+                end
+            end
+            
+            -- Apply built-in styling only if Masque is not enabled for this viewer
+            if not viewerMasqueEnabled then
+                local z = CooldownManagerDBHandler.profile.iconZoom or 0.25
+                child.Icon:SetTexCoord(z, 1 - z, z, 1 - z)
+                AddPixelBorder(child)
+            end
         end
+    end
+    
+    -- Update Masque group if enabled
+    if viewerMasqueEnabled and CooldownManager.UpdateMasqueIcons then
+        CooldownManager.UpdateMasqueIcons(viewerName)
     end
 
     -- Ensure anchoring remains aligned to Edit Mode manager
@@ -127,6 +151,18 @@ function CooldownManager.ViewerManager.TrySkin()
     
     for _, name in ipairs(CooldownManager.viewers) do
         CooldownManager.ViewerManager.SkinViewer(name)
+    end
+    
+    -- Also refresh Masque skinning if enabled
+    if CooldownManager.IsMasqueEnabled and CooldownManager.IsMasqueEnabled() then
+        local profile = CooldownManagerDBHandler and CooldownManagerDBHandler.profile
+        if profile and profile.masque and profile.masque.enabled then
+            for _, viewerName in ipairs(CooldownManager.viewers) do
+                if CooldownManager.UpdateMasqueIcons then
+                    CooldownManager.UpdateMasqueIcons(viewerName)
+                end
+            end
+        end
     end
 end
 
@@ -174,6 +210,38 @@ function CooldownManager.ViewerManager.InitializeTrinketWatcher()
     trinketWatchFrame:SetScript("OnEvent", function(_, _, slotID)
         CooldownManager.ViewerManager.HandleTrinketChange(slotID)
     end)
+end
+
+-- Clean up Masque skinning for a viewer
+function CooldownManager.ViewerManager.CleanupMasque(viewerName)
+    if not CooldownManager.IsMasqueEnabled or not CooldownManager.IsMasqueEnabled() then return end
+    
+    local viewer = _G[viewerName]
+    if not viewer then return end
+    
+    local children = { viewer:GetChildren() }
+    for _, child in ipairs(children) do
+        if child and child._masqueEnabled and CooldownManager.RemoveIconFromMasque then
+            CooldownManager.RemoveIconFromMasque(child, viewerName)
+            
+            -- Restore built-in borders when Masque is disabled
+            if child.__borderParts then
+                for _, line in ipairs(child.__borderParts) do
+                    if line then line:Show() end
+                end
+            end
+        end
+    end
+end
+
+-- Re-apply skinning to all viewers (used when settings change)
+function CooldownManager.ViewerManager.RefreshAllViewers()
+    for _, viewerName in ipairs(CooldownManager.viewers) do
+        -- Clean up first if needed
+        CooldownManager.ViewerManager.CleanupMasque(viewerName)
+        -- Re-apply skinning
+        CooldownManager.ViewerManager.SkinViewer(viewerName)
+    end
 end
 
 -- Expose functions globally

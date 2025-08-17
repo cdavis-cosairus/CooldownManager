@@ -623,13 +623,13 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
 
     local bar = independentResourceBar
     
-    -- Calculate width - try to match viewer width if available
+    -- Calculate width - try to match viewer width if available or use manual setting
     local attachToViewer = settings.attachToViewer or "EssentialCooldownViewer"
     local viewer = _G[attachToViewer]
     local width
     
-    if viewer and viewer:IsShown() and CooldownManager.CalculateBarWidth then
-        -- Use viewer-based width calculation if viewer is available
+    if viewer and viewer:IsShown() and CooldownManager.CalculateBarWidth and settings.autoWidth then
+        -- Use viewer-based width calculation if viewer is available and auto width is enabled
         width = CooldownManager.CalculateBarWidth(settings, viewer)
     else
         -- Fall back to manual width setting

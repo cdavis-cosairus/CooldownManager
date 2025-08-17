@@ -2,6 +2,9 @@
 local AceDB = LibStub("AceDB-3.0")
 local LSM = LibStub("LibSharedMedia-3.0")
 
+-- Masque integration
+local Masque = LibStub("Masque", true)
+
 -- Make CooldownManager namespace global
 CooldownManager = CooldownManager or {}
 
@@ -36,7 +39,8 @@ CooldownManager.CONSTANTS = {
     SIZES = {
         DEFAULT_RESOURCE_HEIGHT = 16,
         DEFAULT_CAST_HEIGHT = 22,
-        DEFAULT_FONT_SIZE = 20
+        DEFAULT_FONT_SIZE = 20,
+        DEFAULT_BAR_WIDTH = 300
     }
 }
 
@@ -53,6 +57,9 @@ CooldownManager.viewers = {
 -- Global storage for bars (accessible to other modules)
 CooldownManagerResourceBars = CooldownManagerResourceBars or {}
 CooldownManagerCastBars = CooldownManagerCastBars or {}
+
+-- Masque group storage
+local masqueGroups = {}
 
 -- Performance tracking (debug mode)
 local perfStats = {
@@ -84,6 +91,72 @@ function CooldownManager.ThrottleEvent(eventName, delay)
     end
     eventThrottle[eventName] = now
     return false -- not throttled
+end
+
+-- Masque integration functions
+function CooldownManager.GetMasqueGroup(viewerName)
+    if not Masque then return nil end
+    
+    if not masqueGroups[viewerName] then
+        masqueGroups[viewerName] = Masque:Group("CooldownManager", viewerName)
+    end
+    
+    return masqueGroups[viewerName]
+end
+
+function CooldownManager.AddIconToMasque(icon, viewerName)
+    if not Masque or not icon then return false end
+    
+    local group = CooldownManager.GetMasqueGroup(viewerName)
+    if not group then return false end
+    
+    -- Prepare icon for Masque skinning
+    if not icon._masqueButton then
+        -- Create Masque-compatible button structure
+        icon._masqueButton = {
+            Icon = icon.Icon or icon:CreateTexture(nil, "ARTWORK"),
+            Cooldown = icon.Cooldown,
+            Count = icon.Count,
+            HotKey = icon.HotKey,
+            Name = icon.Name,
+            Border = icon.Border,
+            Flash = icon.Flash,
+            Pushed = icon.Pushed,
+            Checked = icon.Checked,
+            Highlight = icon.Highlight,
+            Normal = icon.Normal
+        }
+    end
+    
+    -- Add to Masque group
+    group:AddButton(icon, icon._masqueButton)
+    icon._masqueEnabled = true
+    
+    return true
+end
+
+function CooldownManager.RemoveIconFromMasque(icon, viewerName)
+    if not Masque or not icon or not icon._masqueEnabled then return end
+    
+    local group = CooldownManager.GetMasqueGroup(viewerName)
+    if group then
+        group:RemoveButton(icon)
+    end
+    
+    icon._masqueEnabled = false
+end
+
+function CooldownManager.UpdateMasqueIcons(viewerName)
+    if not Masque then return end
+    
+    local group = CooldownManager.GetMasqueGroup(viewerName)
+    if group then
+        group:ReSkin()
+    end
+end
+
+function CooldownManager.IsMasqueEnabled()
+    return Masque ~= nil
 end
 
 function CooldownManager.TrackPerformance(funcName, func)
