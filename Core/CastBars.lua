@@ -64,6 +64,12 @@ function CooldownManager.CastBars.UpdateIndependentCastBar()
         bar.CastTime:SetJustifyH("RIGHT")
         bar.CastTime:SetJustifyV("MIDDLE")
 
+        -- Create tick indicators for empowered spells
+        bar.TickContainer = CreateFrame("Frame", nil, bar)
+        bar.TickContainer:SetAllPoints(bar)
+        bar.TickContainer:SetFrameLevel(bar:GetFrameLevel() + 5)
+        bar.Ticks = {}
+
         -- Note: Border will be handled by UpdateCastBarBorder function
         -- This ensures our new border system works properly
 
@@ -182,6 +188,9 @@ function CooldownManager.CastBars.UpdateIndependentCastBar()
     bar.SpellName:ClearAllPoints()
     bar.CastTime:ClearAllPoints()
 
+    -- Get text positioning setting
+    local textPosition = settings.textPosition or "center"
+    
     if textPosition == "left" then
         -- Both texts on the left side
         bar.SpellName:SetPoint("LEFT", bar.TextFrame, "LEFT", 0, 0)
@@ -360,6 +369,89 @@ function CooldownManager.CastBars.UpdateCastBarBorder(bar, settings)
     bar.__borderFrame = borderFrame
 end
 
+-- Function to create and update tick indicators for empowered spells
+function CooldownManager.CastBars.UpdateEmpowermentTicks(bar, numStages, currentStage)
+    if not bar or not bar.TickContainer or not bar.Ticks then 
+        return 
+    end
+    
+    -- Get settings
+    local profile = CooldownManagerDBHandler and CooldownManagerDBHandler.profile
+    local settings = profile and profile.independentCastBar or {}
+    local enableTicks = settings.enableTicks ~= false -- Default: enabled
+    
+    -- Hide all existing ticks first
+    for i = 1, #bar.Ticks do
+        if bar.Ticks[i] then
+            bar.Ticks[i]:Hide()
+        end
+    end
+    
+    -- Don't show ticks if disabled or no stages or only 1 stage
+    if not enableTicks or not numStages or numStages <= 1 then
+        return
+    end
+    
+    local barWidth = bar:GetWidth()
+    if not barWidth or barWidth <= 0 then
+        return
+    end
+    
+    -- Account for icon space if icon is shown
+    local showIcon = settings.showIcon ~= false
+    local iconWidth = showIcon and bar:GetHeight() or 0
+    local usableWidth = barWidth - iconWidth
+    
+    -- Get tick appearance settings
+    local tickWidth = settings.tickWidth or 3
+    local tickHeight = (settings.tickHeight or 0.8) * bar:GetHeight()
+    local activeColor = settings.tickActiveColor or { r = 1, g = 0.8, b = 0, a = 1.0 }  -- Orange/gold for active
+    local inactiveColor = settings.tickInactiveColor or { r = 0.3, g = 0.3, b = 0.3, a = 0.8 }  -- Dark gray for inactive
+    
+    -- Create segment-style indicators for each empowerment stage
+    for i = 1, numStages do
+        -- Create tick if it doesn't exist
+        if not bar.Ticks[i] then
+            local tick = bar.TickContainer:CreateTexture(nil, "OVERLAY")
+            -- Use a solid texture for segment-style appearance
+            tick:SetTexture("Interface\\Buttons\\WHITE8X8")
+            tick:SetBlendMode("BLEND")
+            bar.Ticks[i] = tick
+        end
+        
+        local tick = bar.Ticks[i]
+        
+        -- Calculate segment dimensions
+        local segmentWidth = usableWidth / numStages
+        local segmentHeight = tickHeight
+        
+        -- Make segments slightly smaller than full width to create gaps
+        local actualSegmentWidth = segmentWidth - 2
+        
+        -- Update tick size for segment appearance
+        tick:SetWidth(actualSegmentWidth)
+        tick:SetHeight(segmentHeight)
+        
+        -- Position the segment
+        local segmentStart = iconWidth + ((i - 1) * segmentWidth)
+        local segmentCenter = segmentStart + (segmentWidth / 2)
+        
+        tick:ClearAllPoints()
+        tick:SetPoint("CENTER", bar, "LEFT", segmentCenter, 0)
+        
+        -- Color the segment based on whether this stage has been reached
+        if currentStage and i <= currentStage then
+            -- Reached stage - use active color
+            tick:SetVertexColor(activeColor.r, activeColor.g, activeColor.b, activeColor.a)
+        else
+            -- Unreached stage - use inactive color
+            tick:SetVertexColor(inactiveColor.r, inactiveColor.g, inactiveColor.b, inactiveColor.a)
+        end
+        
+        tick:Show()
+    end
+end
+
 -- Function to update cast bar with casting information (called by events and OnUpdate)
 local function UpdateIndependentCastBarInfo()
     if not independentCastBar then
@@ -369,13 +461,15 @@ local function UpdateIndependentCastBarInfo()
     local bar = independentCastBar
     local name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId
     local isChanneling = false
+    local isEmpowered = false
+    local numEmpowerStages = 0
     
     -- Check for casting first
     name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo("player")
     
-    -- If not casting, check for channeling
+    -- If not casting, check for channeling (including empowered spells)
     if not name then
-        name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellId = UnitChannelInfo("player")
+        name, text, texture, startTime, endTime, isTradeSkill, notInterruptible, spellId, isEmpowered, numEmpowerStages = UnitChannelInfo("player")
         isChanneling = true
     end
     
@@ -410,10 +504,12 @@ local function UpdateIndependentCastBarInfo()
         -- Set progress bar
         if duration > 0 then
             local progress = elapsed / duration
-            if isChanneling then
-                -- For channeling, progress goes from 1 to 0
+            -- Special handling for empowered spells - treat them like normal casts
+            if isChanneling and not isEmpowered then
+                -- For normal channeling, progress goes from 1 to 0
                 progress = 1 - progress
             end
+            -- For empowered spells or normal casts, progress goes from 0 to 1
             bar:SetValue(math.max(0, math.min(1, progress)))
         end
         
@@ -425,11 +521,46 @@ local function UpdateIndependentCastBarInfo()
                 bar.CastTime:SetText("")
             end
         end
+        
+        -- Handle empowered spell tick indicators
+        if isEmpowered and numEmpowerStages and numEmpowerStages > 1 then
+            -- For empowered spells, calculate progress like a normal cast (0 to 1)
+            local currentStage = 0
+            
+            if duration > 0 then
+                -- Calculate progress as 0 to 1 (like normal cast)
+                local progress = elapsed / duration
+                
+                -- Calculate empowerment stage based on progress
+                if progress < 0.2 then
+                    currentStage = 0  -- Very early in cast
+                elseif progress < 0.4 then
+                    currentStage = 1  -- First empowerment stage
+                elseif progress < 0.6 then
+                    currentStage = 2  -- Second empowerment stage
+                elseif progress < 0.8 then
+                    currentStage = 3  -- Third empowerment stage (if available)
+                else
+                    currentStage = math.min(numEmpowerStages, 4)  -- Max empowerment
+                end
+                
+                -- Don't exceed available stages
+                currentStage = math.min(currentStage, numEmpowerStages)
+            end
+            
+            -- Update tick indicators
+            CooldownManager.CastBars.UpdateEmpowermentTicks(bar, numEmpowerStages, currentStage)
+        else
+            -- Hide tick indicators for non-empowered spells
+            CooldownManager.CastBars.UpdateEmpowermentTicks(bar, 0, 0)
+        end
     else
         -- Hide the bar if no casting/channeling
         if bar:IsShown() then
             bar:Hide()
             bar:SetScript("OnUpdate", nil)
+            -- Clear tick indicators when hiding
+            CooldownManager.CastBars.UpdateEmpowermentTicks(bar, 0, 0)
         end
     end
 end
@@ -449,6 +580,9 @@ function CooldownManager.CastBars.InitializeEvents()
     independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
     independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_UPDATE")
     independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_EMPOWER_START")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_EMPOWER_UPDATE")
+    independentCastBarEventFrame:RegisterEvent("UNIT_SPELLCAST_EMPOWER_STOP")
 
     independentCastBarEventFrame:SetScript("OnEvent", function(self, event, unit)
         if unit == "player" then

@@ -1370,6 +1370,104 @@ function SetupOptions()
                             },
                         },
                     },
+                    empowerment = {
+                        type = "group",
+                        name = "Empowerment",
+                        order = 3,
+                        args = {
+                            enableTicks = {
+                                type = "toggle",
+                                name = "Enable Empowerment Segments",
+                                desc = "Show segment indicators for Evoker empowered spells like Fire Breath and Eternity Surge",
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.enableTicks ~= false -- Default: enabled
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.enableTicks = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 1,
+                            },
+                            tickActiveColor = {
+                                type = "color",
+                                name = "Active Segment Color",
+                                desc = "Color for empowerment segments that have been reached",
+                                hasAlpha = true,
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    local c = CooldownManagerDBHandler.profile.independentCastBar.tickActiveColor or { r = 1, g = 0.8, b = 0, a = 1.0 }
+                                    return c.r, c.g, c.b, c.a
+                                end,
+                                set = function(_, r, g, b, a)
+                                    CooldownManagerDBHandler.profile.independentCastBar.tickActiveColor = { r = r, g = g, b = b, a = a }
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 2,
+                            },
+                            tickInactiveColor = {
+                                type = "color",
+                                name = "Inactive Segment Color",
+                                desc = "Color for empowerment segments that have not been reached yet",
+                                hasAlpha = true,
+                                get = function()
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    local c = CooldownManagerDBHandler.profile.independentCastBar.tickInactiveColor or { r = 0.3, g = 0.3, b = 0.3, a = 0.8 }
+                                    return c.r, c.g, c.b, c.a
+                                end,
+                                set = function(_, r, g, b, a)
+                                    CooldownManagerDBHandler.profile.independentCastBar.tickInactiveColor = { r = r, g = g, b = b, a = a }
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 3,
+                            },
+                            tickHeight = {
+                                type = "range",
+                                name = "Segment Height",
+                                desc = "Height of the empowerment segments relative to the cast bar height",
+                                min = 0.3, max = 1.0, step = 0.05,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.tickHeight or 0.8
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.tickHeight = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 4,
+                            },
+                            tickWidth = {
+                                type = "range",
+                                name = "Tick Width",
+                                desc = "Width of the empowerment tick marks",
+                                min = 1, max = 8, step = 1,
+                                get = function() 
+                                    CooldownManagerDBHandler.profile.independentCastBar = CooldownManagerDBHandler.profile.independentCastBar or {}
+                                    return CooldownManagerDBHandler.profile.independentCastBar.tickWidth or 2
+                                end,
+                                set = function(_, val) 
+                                    CooldownManagerDBHandler.profile.independentCastBar.tickWidth = val 
+                                    -- Apply change immediately
+                                    if CooldownManager and CooldownManager.CastBars and CooldownManager.CastBars.UpdateIndependentCastBar then
+                                        CooldownManager.CastBars.UpdateIndependentCastBar()
+                                    end
+                                end,
+                                order = 5,
+                            },
+                        },
+                    },
                 },
             },
             
