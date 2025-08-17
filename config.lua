@@ -244,101 +244,6 @@ function SetupOptions()
         type = "group",
         name = "Cooldown Manager",
         args = {
-            borderSize = {
-                type = "range",
-                name = "Border Size",
-                desc = "Adjust thickness of the icon border",
-                min = 0, max = 5, step = 1,
-                get = function() 
-                    local profile = GetCachedProfile()
-                    return profile and profile.borderSize or 1
-                end,
-                set = function(_, val)
-                    local profile = GetCachedProfile()
-                    if profile then
-                        profile.borderSize = val
-                        TrySkin()
-                    end
-                end,
-                order = 1,
-            },
-            iconZoom = {
-                type = "range",
-                name = "Icon Zoom",
-                desc = "Crop the icon edges",
-                min = 0.01, max = 0.15, step = 0.005,
-                get = function() 
-                    local profile = GetCachedProfile()
-                    return profile and profile.iconZoom or 0.08
-                end,
-                set = function(_, val)
-                    local profile = GetCachedProfile()
-                    if profile then
-                        profile.iconZoom = val
-                        TrySkin()
-                    end
-                end,
-                order = 2,
-            },
-            borderColor = {
-                type = "color",
-                name = "Border Color",
-                desc = "Choose the border color",
-                hasAlpha = false,
-                get = function()
-                    local profile = GetCachedProfile()
-                    if not profile then return 0, 0, 0 end
-                    local c = profile.borderColor
-                    if not c then
-                        c = { r = 0, g = 0, b = 0 } -- fallback default if missing
-                        profile.borderColor = c -- fix it in DB too immediately
-                    end
-                    return c.r, c.g, c.b
-                end,
-                
-                set = function(_, r, g, b)
-                    local profile = GetCachedProfile()
-                    if profile then
-                        profile.borderColor = { r = r, g = g, b = b }
-                        TrySkin()
-                    end
-                end,
-                order = 3,
-            },
-            useAuraForCooldown = {
-                type = "toggle",
-                name = "Show Buff Duration Swipe",
-                desc = "Toggle whether Blizzard icons use buff durations",
-                get = function() 
-                    local profile = GetCachedProfile()
-                    return not profile or profile.useAuraForCooldown ~= false 
-                end,
-                set = function(_, val)
-                    local profile = GetCachedProfile()
-                    if profile then
-                        profile.useAuraForCooldown = val
-                        TrySkin()
-                    end
-                end,
-                order = 4,
-            },
-            enableIconReskinning = {
-                type = "toggle",
-                name = "Enable Icon Reskinning",
-                desc = "Toggle whether to apply custom styling (borders, zoom, colors) to cooldown icons",
-                get = function() 
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return true end
-                    return CooldownManagerDBHandler.profile.enableIconReskinning ~= false 
-                end,
-                set = function(_, val)
-                    if not CooldownManagerDBHandler or not CooldownManagerDBHandler.profile then return end
-                    CooldownManagerDBHandler.profile.enableIconReskinning = val
-                    TrySkin()
-                end,
-                order = 5,
-            },
-            
-            
             resourceBars = {
                 type = "group",
                 name = "Resource Bar",
@@ -1833,10 +1738,95 @@ function SetupOptions()
             
             layout = {
                 type = "group",
-                name = "Viewer Layouts",
+                name = "Viewers",
                 childGroups = "tab",
                 order = 10,
-                args = {},
+                args = {
+                    icons = {
+                        type = "group",
+                        name = "Icons",
+                        order = 1,
+                        args = {
+                            borderSize = {
+                                type = "range",
+                                name = "Border Size",
+                                desc = "Adjust thickness of the icon border",
+                                min = 0, max = 5, step = 1,
+                                get = function() 
+                                    local profile = GetCachedProfile()
+                                    return profile and profile.borderSize or 1
+                                end,
+                                set = function(_, val)
+                                    local profile = GetCachedProfile()
+                                    if profile then
+                                        profile.borderSize = val
+                                        TrySkin()
+                                    end
+                                end,
+                                order = 1,
+                            },
+                            iconZoom = {
+                                type = "range",
+                                name = "Icon Zoom",
+                                desc = "Crop the icon edges",
+                                min = 0.01, max = 0.15, step = 0.005,
+                                get = function() 
+                                    local profile = GetCachedProfile()
+                                    return profile and profile.iconZoom or 0.08
+                                end,
+                                set = function(_, val)
+                                    local profile = GetCachedProfile()
+                                    if profile then
+                                        profile.iconZoom = val
+                                        TrySkin()
+                                    end
+                                end,
+                                order = 2,
+                            },
+                            borderColor = {
+                                type = "color",
+                                name = "Border Color",
+                                desc = "Choose the border color",
+                                hasAlpha = false,
+                                get = function()
+                                    local profile = GetCachedProfile()
+                                    if not profile then return 0, 0, 0 end
+                                    local c = profile.borderColor
+                                    if not c or type(c) ~= "table" then
+                                        c = { r = 0, g = 0, b = 0 }
+                                        profile.borderColor = c -- fix it in DB too immediately
+                                    end
+                                    return c.r or 0, c.g or 0, c.b or 0
+                                end,
+                                set = function(_, r, g, b)
+                                    local profile = GetCachedProfile()
+                                    if profile then
+                                        profile.borderColor = { r = r, g = g, b = b }
+                                        TrySkin()
+                                    end
+                                end,
+                                order = 3,
+                            },
+                            useClassColor = {
+                                type = "toggle",
+                                name = "Use Class Color",
+                                desc = "Use your class color for icon borders instead of the custom border color",
+                                get = function()
+                                    local profile = GetCachedProfile()
+                                    return profile and profile.useClassColor or false
+                                end,
+                                set = function(_, val)
+                                    local profile = GetCachedProfile()
+                                    if profile then
+                                        profile.useClassColor = val
+                                        TrySkin()
+                                    end
+                                end,
+                                order = 4,
+                            },
+                        }
+                    }
+                },
             },        
             hideSpells = {
                 type = "group",

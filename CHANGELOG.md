@@ -2,6 +2,29 @@
 
 All notable changes to Cooldown Manager will be documented in this file.
 
+## [1.4.0] - 2025-08-17
+
+### Added
+- **Brewmaster Stagger Bar**: Real-time stagger tracking with color coding (light/moderate/heavy)
+- **Masque Integration**: Full Masque addon support with per-viewer controls and conflict resolution
+- **Resource Bar Borders**: Configurable borders with size, color, and LSM texture support
+- **Class Color Borders**: Option to use class colors for icon borders instead of custom colors
+- **Reload Management**: Smart reload requirement when disabling Masque for proper cleanup
+
+### Changed
+- **Config Reorganization**: Moved icon settings to Viewers → Icons section, removed "Enable Icon Reskinning" toggle
+- **Modern API**: Updated to BackdropTemplate for modern WoW compatibility
+
+### Fixed
+- **Auto Width**: Fixed main resource bar auto width not working properly
+- **Border Conflicts**: Built-in borders now hide when Masque is enabled
+- **API Errors**: Resolved SetBackdrop compatibility issues
+
+### Technical
+- Organized test files into `Tests/` directory
+- Added comprehensive class color definitions for all 13 classes
+- Enhanced error handling and defensive programming
+
 ## [1.3.0] - 2025-08-16
 
 ### Major Code Deduplication & Architecture Overhaul

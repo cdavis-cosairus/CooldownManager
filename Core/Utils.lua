@@ -34,6 +34,21 @@ CooldownManager.CONSTANTS = {
             LIGHT = {0.4, 0.8, 0.4},     -- Green for light stagger
             MODERATE = {1.0, 0.6, 0.2},  -- Orange for moderate stagger  
             HEAVY = {0.8, 0.2, 0.2}      -- Red for heavy stagger
+        },
+        CLASS_COLORS = {
+            WARRIOR = {0.78, 0.61, 0.43},
+            PALADIN = {0.96, 0.55, 0.73},
+            HUNTER = {0.67, 0.83, 0.45},
+            ROGUE = {1.00, 0.96, 0.41},
+            PRIEST = {1.00, 1.00, 1.00},
+            DEATHKNIGHT = {0.77, 0.12, 0.23},
+            SHAMAN = {0.00, 0.44, 0.87},
+            MAGE = {0.25, 0.78, 0.92},
+            WARLOCK = {0.53, 0.53, 0.93},
+            MONK = {0.00, 1.00, 0.59},
+            DRUID = {1.00, 0.49, 0.04},
+            DEMONHUNTER = {0.64, 0.19, 0.79},
+            EVOKER = {0.20, 0.58, 0.50}
         }
     },
     SIZES = {
@@ -318,6 +333,15 @@ function AddPixelBorder(frame)
     local dbProfile = CooldownManagerDBHandler.profile or {}
     local thickness = dbProfile.borderSize or 1
     local color = dbProfile.borderColor or { r = 0, g = 0, b = 0 }
+    
+    -- Use class color if enabled
+    if dbProfile.useClassColor then
+        local _, playerClassFile = CooldownManager.GetCachedPlayerClass()
+        local classColor = CooldownManager.CONSTANTS.COLORS.CLASS_COLORS[playerClassFile]
+        if classColor then
+            color = { r = classColor[1], g = classColor[2], b = classColor[3] }
+        end
+    end
 
     frame.__borderParts = frame.__borderParts or {}
 
