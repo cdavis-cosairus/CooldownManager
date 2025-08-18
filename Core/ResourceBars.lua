@@ -509,10 +509,13 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
     -- Add border if configured
     AddResourceBarBorder(sbar, settings)
 
-    -- Throttled OnUpdate for secondary resource bar updates (30 FPS for performance)
+    -- Throttled OnUpdate for secondary resource bar updates (60 FPS for performance)
     if not sbar._secondaryUpdateHooked then
-        local updateInterval = 0.033  -- ~30 FPS instead of 120 FPS for performance
+        local updateInterval = 0.016  -- ~60 FPS instead of 120 FPS for performance
         local elapsed = 0
+        local cachedWidth = nil
+        local lastWidthCheck = 0
+        
         sbar:SetScript("OnUpdate", function(self, delta)
             elapsed = elapsed + delta
             if elapsed < updateInterval then return end
@@ -521,31 +524,52 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
             -- Only update if the bar is actually visible to save performance
             if not self:IsShown() then return end
             
+            -- Cache frame width to reduce GetWidth() calls
+            local now = GetTime()
+            if not cachedWidth or (now - lastWidthCheck) > 0.5 then
+                cachedWidth = self:GetWidth() or 300
+                if cachedWidth <= 0 then cachedWidth = 300 end
+                lastWidthCheck = now
+            end
+            local frameWidth = cachedWidth
+            
             if class == "DEATHKNIGHT" then
                 local totalRunes = 6
-                local frameWidth = self:GetWidth() or 300
-                if frameWidth <= 0 then frameWidth = 300 end
                 local runeWidth = PixelPerfect((frameWidth - (totalRunes - 1)) / totalRunes)
                 UpdateDeathKnightRunes(self, totalRunes, runeWidth, texture)
             elseif class == "ROGUE" or (class == "DRUID" and GetSpecialization() == 2) then
-                local maxCP = UnitPowerMax("player", Enum.PowerType.ComboPoints) or 5
-                local currentCP = UnitPower("player", Enum.PowerType.ComboPoints) or 0
-                local frameWidth = self:GetWidth() or 300
-                if frameWidth <= 0 then frameWidth = 300 end
+                -- Cache power values to reduce API calls
+                local powerData = CooldownManager.PerformanceCache and 
+                    CooldownManager.PerformanceCache.GetCachedPower("player", Enum.PowerType.ComboPoints) or 
+                    { current = UnitPower("player", Enum.PowerType.ComboPoints), max = UnitPowerMax("player", Enum.PowerType.ComboPoints) }
+                local maxCP = powerData.max or 5
+                local currentCP = powerData.current or 0
                 local pointWidth = PixelPerfect((frameWidth - (maxCP - 1)) / maxCP)
-                UpdateComboPointsOrChi(self, maxCP, currentCP, pointWidth, texture, 
-                    CooldownManager.CONSTANTS.COLORS.COMBO_POINTS, {0.3, 0.3, 0.3})
+                
+                -- Use cached colors
+                local colors = CooldownManager.PerformanceCache and CooldownManager.PerformanceCache.GetCachedColors() or {}
+                local activeColor = colors.combo_points or CooldownManager.CONSTANTS.COLORS.COMBO_POINTS
+                local inactiveColor = colors.inactive or {0.3, 0.3, 0.3}
+                
+                UpdateComboPointsOrChi(self, maxCP, currentCP, pointWidth, texture, activeColor, inactiveColor)
             elseif class == "MONK" and GetSpecialization() == 1 then
                 -- Brewmaster Monk - Stagger Bar
                 UpdateBrewmasterStagger(self, texture)
             elseif class == "MONK" and GetSpecialization() == 3 then
-                local maxChi = UnitPowerMax("player", Enum.PowerType.Chi) or 5
-                local currentChi = UnitPower("player", Enum.PowerType.Chi) or 0
-                local frameWidth = self:GetWidth() or 300
-                if frameWidth <= 0 then frameWidth = 300 end
+                -- Cache power values to reduce API calls
+                local powerData = CooldownManager.PerformanceCache and 
+                    CooldownManager.PerformanceCache.GetCachedPower("player", Enum.PowerType.Chi) or 
+                    { current = UnitPower("player", Enum.PowerType.Chi), max = UnitPowerMax("player", Enum.PowerType.Chi) }
+                local maxChi = powerData.max or 5
+                local currentChi = powerData.current or 0
                 local pointWidth = PixelPerfect((frameWidth - (maxChi - 1)) / maxChi)
-                UpdateComboPointsOrChi(self, maxChi, currentChi, pointWidth, texture, 
-                    CooldownManager.CONSTANTS.COLORS.CHI, {0.2, 0.4, 0.2})
+                
+                -- Use cached colors
+                local colors = CooldownManager.PerformanceCache and CooldownManager.PerformanceCache.GetCachedColors() or {}
+                local activeColor = colors.chi or CooldownManager.CONSTANTS.COLORS.CHI
+                local inactiveColor = colors.chi_inactive or {0.2, 0.4, 0.2}
+                
+                UpdateComboPointsOrChi(self, maxChi, currentChi, pointWidth, texture, activeColor, inactiveColor)
             elseif class == "DEMONHUNTER" and GetSpecialization() == 2 then
                 -- Vengeance Demon Hunter Soul Fragments
                 local maxFragments = 5
@@ -730,7 +754,7 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
         for _, tick in ipairs(bar.Ticks) do tick:Hide() end
     end
 
-    -- Resource value calculation
+    -- Resource value calculation (optimized with caching)
     local current, max
     if powerType == "MAELSTROM_WEAPON_BUFF" then
         local aura = GetAuraDataBySpellID("player", 344179)
@@ -744,8 +768,12 @@ function CooldownManager.ResourceBars.UpdateIndependentResourceBar()
         current = essenceData.current + (essenceData.partial or 0)
         max = essenceData.max
     elseif type(powerType) == "number" then
-        current = UnitPower("player", powerType)
-        max = UnitPowerMax("player", powerType)
+        -- Use cached power values to reduce API calls
+        local powerData = CooldownManager.PerformanceCache and 
+            CooldownManager.PerformanceCache.GetCachedPower("player", powerType) or 
+            { current = UnitPower("player", powerType), max = UnitPowerMax("player", powerType) }
+        current = powerData.current
+        max = powerData.max
     else
         current = 0
         max = 0

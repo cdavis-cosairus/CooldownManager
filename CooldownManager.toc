@@ -33,6 +33,7 @@ Libs\TaintLess\TaintLess.xml
 
 # Core Module Files (must be loaded before main.lua and config.lua)
 Core\Utils.lua
+Core\PerformanceCache.lua
 Core\ResourceBars.lua
 Core\CastBars.lua
 Core\IconManager.lua

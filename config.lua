@@ -201,7 +201,11 @@ local function generateCustomSpellArgs(viewerName)
                     end
 
                     if viewer then
-                        for _, icon in ipairs({ viewer:GetChildren() }) do
+                        -- Use cached children to reduce expensive frame traversals
+                        local children = CooldownManager.PerformanceCache and 
+                            CooldownManager.PerformanceCache.GetCachedChildren(viewer) or 
+                            { viewer:GetChildren() }
+                        for _, icon in ipairs(children) do
                             if icon._spellID == spellID then
                                 icon:Hide()
                                 icon:SetParent(nil)
@@ -2102,7 +2106,11 @@ for _, entry in ipairs(orderedViewers) do
 
     -- Scan all icons in the viewer (both Blizzard + custom) and collect unique spellIDs
     if viewer then
-        for _, icon in ipairs({ viewer:GetChildren() }) do
+        -- Use cached children to reduce expensive frame traversals
+        local children = CooldownManager.PerformanceCache and 
+            CooldownManager.PerformanceCache.GetCachedChildren(viewer) or 
+            { viewer:GetChildren() }
+        for _, icon in ipairs(children) do
             local sid = icon._spellID
             if not sid and icon.GetCooldownID then
                 local cooldownID = icon:GetCooldownID()
@@ -2134,7 +2142,11 @@ for _, entry in ipairs(orderedViewers) do
         if spellID then
             local foundInViewer = false
             if viewer then
-                for _, icon in ipairs({ viewer:GetChildren() }) do
+                -- Use cached children to reduce expensive frame traversals
+                local children = CooldownManager.PerformanceCache and 
+                    CooldownManager.PerformanceCache.GetCachedChildren(viewer) or 
+                    { viewer:GetChildren() }
+                for _, icon in ipairs(children) do
                     if icon._spellID == spellID then
                         foundInViewer = true
                         break
@@ -2271,7 +2283,10 @@ function UpdateCombatVisibility()
                     viewer:SetAlpha(1)
                     viewer:EnableMouse(true)
                     -- Re-enable tooltips for all icons
-                    for _, icon in ipairs({ viewer:GetChildren() }) do
+                    local children = CooldownManager.PerformanceCache and 
+                        CooldownManager.PerformanceCache.GetCachedChildren(viewer) or 
+                        { viewer:GetChildren() }
+                    for _, icon in ipairs(children) do
                         if icon and icon.EnableMouse then
                             icon:EnableMouse(true)
                         end
@@ -2281,7 +2296,10 @@ function UpdateCombatVisibility()
                     viewer:SetAlpha(0)
                     viewer:EnableMouse(false)
                     -- Disable tooltips for all icons
-                    for _, icon in ipairs({ viewer:GetChildren() }) do
+                    local children = CooldownManager.PerformanceCache and 
+                        CooldownManager.PerformanceCache.GetCachedChildren(viewer) or 
+                        { viewer:GetChildren() }
+                    for _, icon in ipairs(children) do
                         if icon and icon.EnableMouse then
                             icon:EnableMouse(false)
                         end
@@ -2292,7 +2310,10 @@ function UpdateCombatVisibility()
                 viewer:SetAlpha(1)
                 viewer:EnableMouse(true)
                 -- Ensure tooltips are enabled for all icons
-                for _, icon in ipairs({ viewer:GetChildren() }) do
+                local children = CooldownManager.PerformanceCache and 
+                    CooldownManager.PerformanceCache.GetCachedChildren(viewer) or 
+                    { viewer:GetChildren() }
+                for _, icon in ipairs(children) do
                     if icon and icon.EnableMouse then
                         icon:EnableMouse(true)
                     end

@@ -16,7 +16,8 @@ $MainFiles = @(
     "Core/IconManager.lua",
     "Core/EventHandler.lua",
     "Core/BuffViewer.lua",
-    "Core/Utils.lua"
+    "Core/Utils.lua",
+    "Core/PerformanceCache.lua"
 )
 
 $ErrorCount = 0
