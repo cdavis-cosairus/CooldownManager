@@ -509,14 +509,18 @@ function CooldownManager.ResourceBars.UpdateIndependentSecondaryResourceBar()
     -- Add border if configured
     AddResourceBarBorder(sbar, settings)
 
-    -- Dedicated OnUpdate for 120 FPS secondary resource bar updates
+    -- Throttled OnUpdate for secondary resource bar updates (30 FPS for performance)
     if not sbar._secondaryUpdateHooked then
-        local updateInterval = 0.008
+        local updateInterval = 0.033  -- ~30 FPS instead of 120 FPS for performance
         local elapsed = 0
         sbar:SetScript("OnUpdate", function(self, delta)
             elapsed = elapsed + delta
             if elapsed < updateInterval then return end
             elapsed = 0
+            
+            -- Only update if the bar is actually visible to save performance
+            if not self:IsShown() then return end
+            
             if class == "DEATHKNIGHT" then
                 local totalRunes = 6
                 local frameWidth = self:GetWidth() or 300
@@ -815,15 +819,15 @@ function CooldownManager.ResourceBars.InitializeEssenceTracking()
         end
     end)
 
-    -- Optimized Essence Recharge Partial Update
+    -- Optimized Essence Recharge Partial Update (Throttled for Performance)
     local throttle = 0
     essenceFrame:SetScript("OnUpdate", function(self, elapsed)
         if not essenceData.active then return end
 
-    throttle = throttle + elapsed
-    -- Remove throttle for maximum smoothness (update every frame)
-    -- if throttle < 0.016 then return end -- ~60 FPS max (matching original)
-    throttle = 0
+        throttle = throttle + elapsed
+        -- Throttle to 60 FPS for performance during mythic content
+        if throttle < 0.016 then return end -- ~60 FPS max
+        throttle = 0
 
         local now = GetTime()
         local elapsedSinceLast = now - essenceData.lastUpdate

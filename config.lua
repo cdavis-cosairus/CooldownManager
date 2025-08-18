@@ -1585,7 +1585,7 @@ function SetupOptions()
             
             masque = {
                 type = "group",
-                name = "Masque Integration",
+                name = "Masque",
                 order = 32,
                 args = {
                     enabled = {
@@ -2070,6 +2070,17 @@ end
                         TrySkin()
                     end,
                 },
+                hideOutOfCombat = {
+                    type = "toggle",
+                    name = "Hide Out of Combat",
+                    desc = "Hide this viewer when out of combat",
+                    order = 9,
+                    get = function() return GetViewerSetting(v, "hideOutOfCombat", false) end,
+                    set = function(_, val)
+                        SetViewerSetting(v, "hideOutOfCombat", val)
+                        UpdateCombatVisibility()
+                    end,
+                },
                 
             },
         }
@@ -2236,9 +2247,59 @@ end)
 
 
 
--- Combat visibility management (resource bars)
+-- Combat visibility management (resource bars and viewers)
 function UpdateCombatVisibility()
     local inCombat = InCombatLockdown()
+    
+    -- Handle viewer visibility
+    local viewers = CooldownManager and CooldownManager.viewers or {
+        "EssentialCooldownViewer",
+        "UtilityCooldownViewer",
+        "BuffIconCooldownViewer",
+    }
+    
+    for _, viewerName in ipairs(viewers) do
+        local viewer = _G[viewerName]
+        if viewer and CooldownManagerDBHandler and CooldownManagerDBHandler.profile and 
+           CooldownManagerDBHandler.profile.viewers and CooldownManagerDBHandler.profile.viewers[viewerName] then
+            
+            local hideOutOfCombat = CooldownManagerDBHandler.profile.viewers[viewerName].hideOutOfCombat
+            
+            if hideOutOfCombat then
+                if inCombat then
+                    -- Show viewer by restoring alpha and enabling tooltips
+                    viewer:SetAlpha(1)
+                    viewer:EnableMouse(true)
+                    -- Re-enable tooltips for all icons
+                    for _, icon in ipairs({ viewer:GetChildren() }) do
+                        if icon and icon.EnableMouse then
+                            icon:EnableMouse(true)
+                        end
+                    end
+                else
+                    -- Hide viewer by setting alpha to 0 and disabling tooltips (but keep position and "shown" state for Blizzard)
+                    viewer:SetAlpha(0)
+                    viewer:EnableMouse(false)
+                    -- Disable tooltips for all icons
+                    for _, icon in ipairs({ viewer:GetChildren() }) do
+                        if icon and icon.EnableMouse then
+                            icon:EnableMouse(false)
+                        end
+                    end
+                end
+            else
+                -- Always show if combat setting is disabled
+                viewer:SetAlpha(1)
+                viewer:EnableMouse(true)
+                -- Ensure tooltips are enabled for all icons
+                for _, icon in ipairs({ viewer:GetChildren() }) do
+                    if icon and icon.EnableMouse then
+                        icon:EnableMouse(true)
+                    end
+                end
+            end
+        end
+    end
     
     -- Handle independent resource bar visibility
     if CooldownManagerDBHandler.profile.independentResourceBar and 

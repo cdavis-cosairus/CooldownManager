@@ -168,14 +168,20 @@ end
 
 -- Initialize viewer manager
 function CooldownManager.ViewerManager.Initialize()
-    local wasVisible = true
+    -- Use event-driven approach instead of OnUpdate polling for better performance
     local watcher = CreateFrame("Frame")
-    watcher:SetScript("OnUpdate", function()
-        local nowVisible = UIParent:IsVisible()
-        if nowVisible and not wasVisible then
+    watcher:RegisterEvent("UI_SCALE_CHANGED")
+    watcher:RegisterEvent("DISPLAY_SIZE_CHANGED") 
+    watcher:RegisterEvent("ADDON_LOADED")
+    
+    watcher:SetScript("OnEvent", function(self, event, ...)
+        if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
+            -- UI scale/size changes may affect viewer positioning
+            C_Timer.After(0.1, CooldownManager.ViewerManager.TrySkin)
+        elseif event == "ADDON_LOADED" then
+            -- Trigger skin update when addons are loaded (may affect UI)
             C_Timer.After(0.1, CooldownManager.ViewerManager.TrySkin)
         end
-        wasVisible = nowVisible
     end)
     
     -- Initialize edit mode hooks

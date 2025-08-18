@@ -51,6 +51,19 @@ local function UpdateAllResourceBars()
     end
 end
 
+-- Throttle frequent power updates to prevent performance issues during mythic content
+local lastPowerUpdate = 0
+local POWER_UPDATE_THROTTLE = 0.1 -- Limit to 10 updates per second max
+
+local function ThrottledResourceBarUpdate()
+    local now = GetTime()
+    if now - lastPowerUpdate < POWER_UPDATE_THROTTLE then
+        return
+    end
+    lastPowerUpdate = now
+    UpdateAllResourceBars()
+end
+
 local TRINKET_SLOTS = {13, 14}
 local trinketUsabilityCache = {}
 
@@ -98,6 +111,12 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
         if UpdateAllCustomIcons then
             UpdateAllCustomIcons()
         end
+        -- Update combat visibility for viewers
+        if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_REGEN_DISABLED" then
+            if UpdateCombatVisibility then
+                UpdateCombatVisibility()
+            end
+        end
     end
     
     if event == "SPELL_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_CHARGES"
@@ -105,7 +124,8 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
         or event == "SPELL_ACTIVATION_OVERLAY_HIDE" then
         if UpdateAllCustomIcons then
             UpdateAllCustomIcons()
-            C_Timer.After(0, UpdateAllCustomIcons)
+            -- Use slight delay for second update to catch any delayed spell changes
+            C_Timer.After(0.01, UpdateAllCustomIcons)
         end
         return
     end
@@ -116,7 +136,12 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
     end
 
     if unit == "player" then
-        UpdateAllResourceBars()
+        -- Use throttled updates for frequent power events to prevent performance issues
+        if event == "UNIT_POWER_FREQUENT" then
+            ThrottledResourceBarUpdate()
+        else
+            UpdateAllResourceBars()
+        end
         if UpdateAllCustomIcons then
             UpdateAllCustomIcons()
         end
@@ -175,7 +200,7 @@ loginFrame:SetScript("OnEvent", function(_, event)
         CooldownManagerDBHandler:RegisterCallback("OnProfileCopied", RefreshConfig)
         CooldownManagerDBHandler:RegisterCallback("OnProfileReset", RefreshConfig)
 
-        C_Timer.After(0, function()
+        C_Timer.After(0.1, function()
             if SetupOptions then
                 SetupOptions()
             end
@@ -185,7 +210,7 @@ loginFrame:SetScript("OnEvent", function(_, event)
         end)
 
     elseif event == "EDIT_MODE_LAYOUTS_UPDATED" then
-        C_Timer.After(0, function()
+        C_Timer.After(0.1, function()
             if TrySkin then
                 TrySkin()
             end
