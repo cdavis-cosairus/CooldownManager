@@ -98,6 +98,12 @@ eventFrame:SetScript("OnEvent", function(_, event, unit)
         if UpdateAllCustomIcons then
             UpdateAllCustomIcons()
         end
+        -- Update combat visibility for viewers
+        if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_REGEN_DISABLED" then
+            if UpdateCombatVisibility then
+                UpdateCombatVisibility()
+            end
+        end
     end
     
     if event == "SPELL_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_CHARGES"

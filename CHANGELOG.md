@@ -2,6 +2,24 @@
 
 All notable changes to Cooldown Manager will be documented in this file.
 
+## [1.4.1] - 2025-08-17
+
+### Added
+- **Viewer Combat Visibility**: Individual "Hide Out of Combat" toggle for each cooldown viewer
+  - Per-viewer setting in Viewers → Layout → [ViewerName] section
+  - Hide EssentialCooldownViewer, UtilityCooldownViewer, or BuffIconCooldownViewer when out of combat
+  - Automatically shows all viewers when entering combat
+  - Independent settings allow mixing visible and hidden viewers
+  - **Uses alpha transparency** to preserve Blizzard's viewer management and cast bar positioning
+- **Tooltip Management**: Tooltips automatically disabled for hidden viewers to prevent invisible UI interactions
+
+### Technical
+- Enhanced `UpdateCombatVisibility()` function to handle viewer visibility using `SetAlpha()`
+- Uses alpha transparency (`SetAlpha(0)`) instead of hiding to preserve icon population and positioning
+- Disables mouse interaction (`EnableMouse(false)`) for both viewers and child icons when hidden
+- Added combat event handling to main.lua for immediate viewer updates
+- Maintains Blizzard's internal cooldown viewer system integrity and cast bar attachment points
+
 ## [1.4.0] - 2025-08-17
 
 ### Added
